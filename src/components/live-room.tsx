@@ -1,6 +1,7 @@
 "use client";
 
 import { PositionBadge } from "@/components/position-badge";
+import { SignOutButton } from "@/components/sign-out-button";
 import type { LiveState, PlayerView } from "@/lib/types";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -108,9 +109,12 @@ export function LiveRoom({
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-4 border-b border-panel-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <Link href="/" className="text-xs uppercase tracking-[0.18em] text-muted">
-            All drafts
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-xs uppercase tracking-[0.18em] text-muted">
+              All drafts
+            </Link>
+            <SignOutButton />
+          </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
             {state.draft.name}
           </h1>

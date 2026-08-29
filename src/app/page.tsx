@@ -1,8 +1,12 @@
 import { HomeSearch } from "@/components/home-search";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default function Home() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-10 sm:py-16">
+      <div className="mb-6 flex justify-end">
+        <SignOutButton />
+      </div>
       <header className="mb-10 max-w-2xl">
         <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-accent">
           Live redraft

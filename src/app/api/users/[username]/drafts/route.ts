@@ -1,5 +1,6 @@
-import { getNflState, getUser, getUserDrafts, SleeperNotFoundError } from "@/lib/sleeper";
 import { scoringFromSettings } from "@/lib/recommend";
+import { unauthorizedResponse } from "@/lib/session";
+import { getNflState, getUser, getUserDrafts, SleeperNotFoundError } from "@/lib/sleeper";
 import type { DraftListItem } from "@/lib/types";
 import { NextRequest } from "next/server";
 
@@ -9,6 +10,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ username: string }> },
 ) {
+  const denied = await unauthorizedResponse();
+  if (denied) return denied;
+
   const { username } = await params;
   if (!username?.trim()) {
     return Response.json({ error: "Username is required" }, { status: 400 });

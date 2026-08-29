@@ -1,4 +1,5 @@
 import { buildLiveState } from "@/lib/live";
+import { unauthorizedResponse } from "@/lib/session";
 import { SleeperNotFoundError } from "@/lib/sleeper";
 import { NextRequest } from "next/server";
 
@@ -8,6 +9,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ draftId: string }> },
 ) {
+  const denied = await unauthorizedResponse();
+  if (denied) return denied;
+
   const { draftId } = await params;
   const username = request.nextUrl.searchParams.get("username")?.trim();
   if (!username) {

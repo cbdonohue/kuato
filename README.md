@@ -11,11 +11,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), enter a Sleeper username, and open a `drafting` or `pre_draft` league.
+Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localhost:3000](http://localhost:3000), sign in, enter a Sleeper username, and open a `drafting` or `pre_draft` league.
 
 ## Optional AI coach
 
-Copy `.env.example` to `.env.local` and set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. When you are on the clock or within two picks, the live room adds a 2–3 sentence note. Without a key, you still get the score breakdown.
+Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. When you are on the clock or within two picks, the live room adds a 2–3 sentence note. Without a key, you still get the score breakdown.
 
 ## Tests
 
