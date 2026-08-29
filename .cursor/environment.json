@@ -1,0 +1,17 @@
+{
+  "name": "Sleeper Draft Assistant",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "npm run dev",
+      "description": "Next.js 16 dev server on http://localhost:3000. Set the SITE_PASSWORD secret to sign in; optional OPENAI_API_KEY/ANTHROPIC_API_KEY enable the AI coach note."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}
