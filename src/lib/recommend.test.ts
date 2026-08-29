@@ -332,6 +332,42 @@ describe("recommend", () => {
     expect(stacked?.reasons).toContain("Stacks with Jalen Hurts");
     expect(recs[0].player.playerId).toBe("phiwr");
   });
+
+  it("ranks an IR WR behind a healthy WR of similar ADP", () => {
+    const recs = recommend(
+      input({
+        pickNo: 1,
+        players: {
+          healthy: player("healthy", "WR", 8, { full_name: "Healthy WR" }),
+          hurt: player("hurt", "WR", 8, {
+            full_name: "Hurt WR",
+            injury_status: "IR",
+            injury_body_part: "knee",
+          }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("healthy");
+    const injured = recs.find((rec) => rec.player.playerId === "hurt");
+    expect(injured).toBeDefined();
+    expect(recs.findIndex((rec) => rec.player.playerId === "hurt")).toBeGreaterThan(0);
+  });
+
+  it("adds a Questionable hamstring reason", () => {
+    const recs = recommend(
+      input({
+        pickNo: 1,
+        players: {
+          wr1: player("wr1", "WR", 8, {
+            full_name: "Ja'Marr Chase",
+            injury_status: "Questionable",
+            injury_body_part: "hamstring",
+          }),
+        },
+      }),
+    );
+    expect(recs[0].reasons).toContain("Questionable · hamstring");
+  });
 });
 
 describe("toPlayerView", () => {
@@ -349,5 +385,24 @@ describe("toPlayerView", () => {
     expect(view.depth).toBe("RB2");
     expect(view.rank).toBe(22.2);
     expect(view.byeWeek).toBe(10);
+    expect(view.espnId).toBeNull();
+  });
+
+  it("copies ESPN and injury fields", () => {
+    const view = toPlayerView(
+      player("r1", "RB", 40, {
+        espn_id: 4241463,
+        injury_status: "Questionable",
+        injury_body_part: "hamstring",
+        injury_notes: "Limited in practice",
+        practice_participation: "Limited",
+      }),
+      "r1",
+    );
+    expect(view.espnId).toBe("4241463");
+    expect(view.injuryStatus).toBe("Questionable");
+    expect(view.injuryBodyPart).toBe("hamstring");
+    expect(view.injuryNotes).toBe("Limited in practice");
+    expect(view.practiceParticipation).toBe("Limited");
   });
 });

@@ -115,6 +115,10 @@ export type SleeperPlayer = {
   status?: string | null;
   injury_status?: string | null;
   injury_start_date?: string | null;
+  injury_notes?: string | null;
+  injury_body_part?: string | null;
+  practice_participation?: string | null;
+  espn_id?: string | number | null;
   search_rank?: number | null;
   number?: number | string | null;
   years_exp?: number | null;
@@ -158,11 +162,26 @@ export type PlayerView = {
   depth: string | null;
   lastSeason: LastSeasonStats | null;
   injuryStatus: string | null;
+  injuryNotes: string | null;
+  injuryBodyPart: string | null;
+  practiceParticipation: string | null;
+  espnId: string | null;
 };
 
 export type Recommendation = {
   player: PlayerView;
   reasons: string[];
+};
+
+export type DraftStory = {
+  playerId: string;
+  playerName: string;
+  position: string;
+  source: string;
+  headline: string;
+  publishedAt: number | null;
+  age: string | null;
+  url: string | null;
 };
 
 export type RosterSlotView = {
@@ -211,6 +230,8 @@ export type LiveState = {
   clock: ClockView;
   roster: RosterSlotView[];
   recommendations: Recommendation[];
+  stories: DraftStory[];
+  newsSources: string[];
   coachNote: string | null;
   recentPicks: RecentPickView[];
   available: PlayerView[];

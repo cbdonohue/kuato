@@ -2,7 +2,7 @@
 
 import { PositionBadge } from "@/components/position-badge";
 import { SignOutButton } from "@/components/sign-out-button";
-import type { LiveState, PlayerView } from "@/lib/types";
+import type { DraftStory, LiveState, PlayerView } from "@/lib/types";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -61,6 +61,60 @@ function lastSeasonLine(player: PlayerView): string | null {
   bits.push(`${ly.games}g`);
   if (ly.line) bits.push(ly.line);
   return bits.join(" · ");
+}
+
+function newsSourceHref(source: string): string {
+  return source === "ESPN" ? "https://www.espn.com" : "https://news.google.com";
+}
+
+function NewsStories({ stories }: { stories: DraftStory[] }) {
+  return (
+    <section className="rounded-xl border border-panel-border bg-panel">
+      <div className="flex items-center justify-between border-b border-panel-border px-4 py-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide">News</h2>
+        <span className="font-mono text-xs text-muted">
+          {stories.length} {stories.length === 1 ? "story" : "stories"}
+        </span>
+      </div>
+      <ul className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
+        {stories.map((story) => {
+          const meta = [story.source, story.age].filter(Boolean).join(" · ");
+          const body = (
+            <>
+              <div className="mb-2 flex items-center gap-2">
+                <PositionBadge position={story.position} />
+                <span className="truncate text-sm font-medium">
+                  {story.playerName}
+                </span>
+              </div>
+              <p className="line-clamp-3 text-sm leading-5">{story.headline}</p>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+                {meta}
+              </p>
+            </>
+          );
+          const className =
+            "block h-full rounded-lg border border-panel-border bg-background px-4 py-3";
+          return (
+            <li key={`${story.playerId}-${story.headline}`} className="min-w-0">
+              {story.url ? (
+                <a
+                  href={story.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${className} transition hover:border-accent/40`}
+                >
+                  {body}
+                </a>
+              ) : (
+                <div className={className}>{body}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 export function LiveRoom({
@@ -191,6 +245,8 @@ export function LiveRoom({
       {error ? (
         <p className="text-sm text-rose-300">Refresh issue: {error}</p>
       ) : null}
+
+      {state.stories?.length ? <NewsStories stories={state.stories} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="flex flex-col gap-4">
@@ -353,6 +409,26 @@ export function LiveRoom({
           nflverse
         </a>
         .
+        {state.newsSources?.length ? (
+          <>
+            {" "}
+            Headlines from{" "}
+            {state.newsSources.map((source, index) => (
+              <span key={source}>
+                {index > 0 ? " and " : null}
+                <a
+                  href={newsSourceHref(source)}
+                  className="text-accent underline-offset-2 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {source}
+                </a>
+              </span>
+            ))}
+            .
+          </>
+        ) : null}
       </p>
     </div>
   );

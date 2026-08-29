@@ -185,7 +185,51 @@ export function toPlayerView(
     depth: depthLabel(player?.position, player?.depth_chart_order),
     lastSeason: extra?.lastSeason ?? null,
     injuryStatus: player?.injury_status ?? null,
+    injuryNotes: player?.injury_notes ?? null,
+    injuryBodyPart: player?.injury_body_part ?? null,
+    practiceParticipation: player?.practice_participation ?? null,
+    espnId:
+      player?.espn_id == null || player.espn_id === ""
+        ? null
+        : String(player.espn_id),
   };
+}
+
+function truncateReason(text: string, max = 80): string {
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
+function practiceLabel(value: string | null): string | null {
+  if (!value) return null;
+  const raw = value.trim();
+  if (!raw || /^full$/i.test(raw)) return null;
+  if (/did not participate/i.test(raw)) return "DNP";
+  return raw.toLowerCase();
+}
+
+export function injuryReason(player: PlayerView): string | null {
+  const status = player.injuryStatus?.trim();
+  if (!status) return null;
+  const part = player.injuryBodyPart?.trim();
+  const practice = practiceLabel(player.practiceParticipation);
+  const notes = player.injuryNotes?.trim();
+  const bits = [status];
+  if (part) bits.push(part);
+  else if (notes) bits.push(truncateReason(notes));
+  if (practice) bits.push(practice);
+  if (bits.length === 1) return null;
+  return bits.join(" · ");
+}
+
+export function injuryPenalty(status: string | null): number {
+  const value = (status ?? "").trim().toLowerCase();
+  if (value === "ir" || value === "pup") return 2.5;
+  if (value === "out" || value === "suspended") return 2.0;
+  if (value === "doubtful") return 1.0;
+  if (value === "questionable") return 0.35;
+  return 0;
 }
 
 function starterSlots(rosterPositions: string[]): string[] {
@@ -460,6 +504,7 @@ function reasonsFor(opts: {
   position: string;
   tier: TierBoost | undefined;
   stackName: string | null;
+  injury: string | null;
 }): string[] {
   const reasons: string[] = [];
   if (opts.need >= 2) reasons.push("Fills a starter hole");
@@ -475,6 +520,7 @@ function reasonsFor(opts: {
     );
   }
   if (opts.stackName) reasons.push(`Stacks with ${opts.stackName}`);
+  if (opts.injury) reasons.push(opts.injury);
   if (opts.value >= 1) reasons.push("Falling vs ADP");
   if (reasons.length === 0) reasons.push("Best available on the board");
   return reasons;
@@ -528,7 +574,8 @@ export function recommend(input: RecommendInput): Recommendation[] {
       need * 1.15 +
       demandScore(demandWeight) * 1.0 +
       (tier?.score ?? 0) * 0.9 +
-      stack * 0.5;
+      stack * 0.5 -
+      injuryPenalty(player.injuryStatus);
     return {
       player,
       total,
@@ -540,6 +587,7 @@ export function recommend(input: RecommendInput): Recommendation[] {
         position: player.position,
         tier,
         stackName: partner?.name ?? null,
+        injury: injuryReason(player),
       }),
     };
   });

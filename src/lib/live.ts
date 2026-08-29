@@ -1,3 +1,4 @@
+import { loadRecStories } from "./news";
 import { getCoachNote, rosterHoleLabels, shouldAskCoach } from "./coach";
 import { buildEnrichmentIndex } from "./enrich";
 import { getFfcAdp } from "./ffc";
@@ -344,8 +345,16 @@ export async function buildLiveState(
           picksUntilUser: clock.picksUntilUser,
           extras,
         };
-  const recommendations =
+  let recommendations =
     unsupported || recommendInput == null ? [] : recommend(recommendInput);
+
+  let newsSources: string[] = [];
+  let stories: LiveState["stories"] = [];
+  if (recommendations.length > 0) {
+    const attached = await loadRecStories(recommendations);
+    stories = attached.stories;
+    newsSources = attached.sources;
+  }
 
   const slotToUser = invertDraftOrder(draft.draft_order);
   const recentPicks: RecentPickView[] = [...picks]
@@ -388,6 +397,7 @@ export async function buildLiveState(
       picksUntilUser: clock.picksUntilUser,
       rosterHoles: rosterHoleLabels(roster),
       demandSummary: recommendInput ? beforeYourPickSummary(recommendInput) : null,
+      stories,
       recommendations,
     });
   }
@@ -410,6 +420,8 @@ export async function buildLiveState(
     clock,
     roster,
     recommendations,
+    stories,
+    newsSources,
     coachNote,
     recentPicks,
     available: availableBoard(picks, players, extras),

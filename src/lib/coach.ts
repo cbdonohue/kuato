@@ -1,4 +1,4 @@
-import type { LiveState, Recommendation, ScoringType } from "./types";
+import type { DraftStory, LiveState, Recommendation, ScoringType } from "./types";
 
 type CoachCacheEntry = {
   note: string;
@@ -28,6 +28,7 @@ export async function getCoachNote(opts: {
   picksUntilUser: number | null;
   rosterHoles: string[];
   demandSummary?: string | null;
+  stories?: DraftStory[];
   recommendations: Recommendation[];
 }): Promise<string | null> {
   if (!hasLlmKey()) return null;
@@ -58,6 +59,7 @@ function buildPrompt(opts: {
   picksUntilUser: number | null;
   rosterHoles: string[];
   demandSummary?: string | null;
+  stories?: DraftStory[];
   recommendations: Recommendation[];
 }): string {
   const lines = opts.recommendations.slice(0, 5).map((rec, index) => {
@@ -78,10 +80,18 @@ function buildPrompt(opts: {
     when,
     `Open starter holes: ${opts.rosterHoles.length ? opts.rosterHoles.join(", ") : "none (bench / depth)"}.`,
     opts.demandSummary || "Before your pick: you are on the clock.",
+    opts.stories?.length
+      ? `News: ${opts.stories
+          .slice(0, 5)
+          .map((story) => `${story.playerName}: ${story.headline}`)
+          .join(" | ")}`
+      : "",
     `Ranked recommendations:`,
     ...lines,
     `Write 2-3 sentences. Name who to take and why. Mention one player to fade (someone likely to last). No preamble, no markdown.`,
-  ].join("\n");
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
 }
 
 async function callOpenAi(prompt: string): Promise<string | null> {
