@@ -5,10 +5,11 @@ import {
   recommend,
   rosterForPick,
   slotForPick,
+  toPlayerView,
   type ClockInput,
   type RecommendInput,
 } from "./recommend";
-import type { SleeperPick, SleeperPlayer } from "./types";
+import type { EnrichmentIndex, SleeperPick, SleeperPlayer } from "./types";
 
 const twelveTeamSnake: ClockInput = {
   teams: 12,
@@ -228,5 +229,49 @@ describe("recommend", () => {
     const qbNeedSf =
       superflex.find((rec) => rec.player.playerId === "qb2")?.scores.need ?? 0;
     expect(qbNeedSf).toBeGreaterThan(qbNeed1);
+  });
+
+  it("uses FFC ADP as rank and falling-vs-ADP copy", () => {
+    const extras: EnrichmentIndex = new Map([
+      [
+        "wr1",
+        { adp: 5, adpStdev: 1.2, byeWeek: 7, lastSeason: null },
+      ],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 25,
+        extras,
+        players: { wr1: player("wr1", "WR", 80) },
+      }),
+    );
+    expect(recs[0].player.rank).toBe(5);
+    expect(recs[0].player.adp).toBe(5);
+    expect(recs[0].player.sleeperRank).toBe(80);
+    expect(recs[0].reasons).toContain("Falling vs ADP");
+  });
+
+  it("falls back to Sleeper rank when ADP is missing", () => {
+    const recs = recommend(input({ pickNo: 1, players: { wr1: player("wr1", "WR", 8) } }));
+    expect(recs[0].player.rank).toBe(8);
+    expect(recs[0].player.adp).toBeNull();
+  });
+});
+
+describe("toPlayerView", () => {
+  it("adds depth, rookie, and ADP overlay", () => {
+    const extras: EnrichmentIndex = new Map([
+      ["r1", { adp: 22.2, adpStdev: 3, byeWeek: 10, lastSeason: null }],
+    ]);
+    const view = toPlayerView(
+      player("r1", "RB", 40, { years_exp: 0, age: 21, depth_chart_order: 2 }),
+      "r1",
+      undefined,
+      extras,
+    );
+    expect(view.rookie).toBe(true);
+    expect(view.depth).toBe("RB2");
+    expect(view.rank).toBe(22.2);
+    expect(view.byeWeek).toBe(10);
   });
 });

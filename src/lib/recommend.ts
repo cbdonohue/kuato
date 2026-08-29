@@ -1,5 +1,6 @@
 import type {
   DraftType,
+  EnrichmentIndex,
   PlayerView,
   Recommendation,
   RosterSlotView,
@@ -32,6 +33,7 @@ export type RecommendInput = ClockInput & {
   picks: SleeperPick[];
   players: Record<string, SleeperPlayer>;
   picksUntilUser: number | null;
+  extras?: EnrichmentIndex | null;
 };
 
 export function isAuction(draftType: string): boolean {
@@ -139,20 +141,49 @@ export function playerName(player: SleeperPlayer | undefined, fallbackId: string
   return parts.length ? parts.join(" ") : fallbackId;
 }
 
+export function sleeperRankValue(player?: SleeperPlayer): number {
+  return player?.search_rank && player.search_rank > 0 ? player.search_rank : 9999;
+}
+
+export function depthLabel(
+  position?: string | null,
+  order?: number | string | null,
+): string | null {
+  if (!position || order == null || order === "") return null;
+  const n = Number(order);
+  if (!Number.isFinite(n) || n < 1) return null;
+  if (!SKILL_POSITIONS.has(position)) return null;
+  return `${position}${n}`;
+}
+
 export function toPlayerView(
   player: SleeperPlayer | undefined,
   playerId: string,
   pickMeta?: { first_name?: string; last_name?: string; position?: string; team?: string },
+  extras?: EnrichmentIndex | null,
 ): PlayerView {
   const nameFromMeta = [pickMeta?.first_name, pickMeta?.last_name]
     .filter(Boolean)
     .join(" ");
+  const extra = extras?.get(playerId) ?? null;
+  const sleeperRank = sleeperRankValue(player);
+  const adp = extra?.adp && extra.adp > 0 ? extra.adp : null;
+  const yearsExp = player?.years_exp ?? null;
   return {
     playerId,
     name: playerName(player, nameFromMeta || playerId),
     position: player?.position || pickMeta?.position || "—",
     team: player?.team || pickMeta?.team || "FA",
-    rank: player?.search_rank && player.search_rank > 0 ? player.search_rank : 9999,
+    rank: adp ?? sleeperRank,
+    sleeperRank,
+    adp,
+    adpStdev: extra?.adpStdev ?? null,
+    byeWeek: extra?.byeWeek ?? null,
+    age: player?.age ?? null,
+    yearsExp,
+    rookie: yearsExp === 0,
+    depth: depthLabel(player?.position, player?.depth_chart_order),
+    lastSeason: extra?.lastSeason ?? null,
     injuryStatus: player?.injury_status ?? null,
   };
 }
@@ -165,6 +196,7 @@ export function fillRosterSlots(
   userPicks: SleeperPick[],
   rosterPositions: string[],
   players: Record<string, SleeperPlayer>,
+  extras?: EnrichmentIndex | null,
 ): RosterSlotView[] {
   const slots: RosterSlotView[] = rosterPositions.map((slot) => ({
     slot,
@@ -173,8 +205,8 @@ export function fillRosterSlots(
 
   const assigned = new Set<string>();
   const ordered = [...userPicks].sort((a, b) => {
-    const rankA = players[a.player_id]?.search_rank ?? 9999;
-    const rankB = players[b.player_id]?.search_rank ?? 9999;
+    const rankA = toPlayerView(players[a.player_id], a.player_id, undefined, extras).rank;
+    const rankB = toPlayerView(players[b.player_id], b.player_id, undefined, extras).rank;
     return rankA - rankB;
   });
 
@@ -189,7 +221,12 @@ export function fillRosterSlots(
   };
 
   for (const pick of ordered) {
-    const view = toPlayerView(players[pick.player_id], pick.player_id, pick.metadata);
+    const view = toPlayerView(
+      players[pick.player_id],
+      pick.player_id,
+      pick.metadata,
+      extras,
+    );
     const pos = view.position;
     if (tryAssign(view, (slot) => slot === pos)) continue;
     if (FLEX_ELIGIBLE.has(pos) && tryAssign(view, (slot) => slot === "FLEX" || slot === "W/R/T" || slot === "REC_FLEX")) {
@@ -297,7 +334,7 @@ function windowScore(
 
 function reasonsFor(scores: Recommendation["scores"], position: string): string[] {
   const reasons: string[] = [];
-  if (scores.value >= 1) reasons.push("Falling vs Sleeper rank");
+  if (scores.value >= 1) reasons.push("Falling vs ADP");
   if (scores.need >= 2) reasons.push("Fills a starter hole");
   else if (scores.need >= 1.2) reasons.push(`Helps ${position} / flex depth`);
   if (scores.scarcity >= 1.2) reasons.push("Position is thinning");
@@ -317,7 +354,12 @@ export function recommend(input: RecommendInput): Recommendation[] {
   const userPicks = input.picks.filter(
     (pick) => Number(pick.roster_id) === Number(input.userRosterId),
   );
-  const roster = fillRosterSlots(userPicks, input.rosterPositions, input.players);
+  const roster = fillRosterSlots(
+    userPicks,
+    input.rosterPositions,
+    input.players,
+    input.extras,
+  );
   const holes = remainingHoles(roster);
 
   const available: PlayerView[] = [];
@@ -328,9 +370,9 @@ export function recommend(input: RecommendInput): Recommendation[] {
     if (player.status && player.status !== "Active" && position !== "DEF") continue;
     if (LATE_ONLY.has(position) && !allowKickers) continue;
     if (!SKILL_POSITIONS.has(position) && !LATE_ONLY.has(position)) continue;
-    const rank = player.search_rank ?? 9999;
-    if (rank > 400 && !LATE_ONLY.has(position)) continue;
-    available.push(toPlayerView(player, id));
+    const view = toPlayerView(player, id, undefined, input.extras);
+    if (view.rank > 400 && !LATE_ONLY.has(position)) continue;
+    available.push(view);
   }
 
   const draftedByPos: Record<string, number> = {};

@@ -1,4 +1,7 @@
 import { getCoachNote, rosterHoleLabels, shouldAskCoach } from "./coach";
+import { buildEnrichmentIndex } from "./enrich";
+import { getFfcAdp } from "./ffc";
+import { getNflverseSeason } from "./nflverse";
 import {
   detectUnsupported,
   fillRosterSlots,
@@ -24,6 +27,7 @@ import {
 } from "./sleeper";
 import type {
   ClockView,
+  EnrichmentIndex,
   LiveState,
   PlayerView,
   RecentPickView,
@@ -222,6 +226,7 @@ function buildClock(opts: {
 function availableBoard(
   picks: SleeperPick[],
   players: Record<string, SleeperPlayer>,
+  extras?: EnrichmentIndex | null,
 ): PlayerView[] {
   const drafted = new Set(picks.map((pick) => pick.player_id));
   const list: PlayerView[] = [];
@@ -230,9 +235,9 @@ function availableBoard(
     const pos = player.position ?? "";
     if (!["QB", "RB", "WR", "TE", "K", "DEF"].includes(pos)) continue;
     if (player.status && player.status !== "Active" && pos !== "DEF") continue;
-    const rank = player.search_rank ?? 9999;
-    if (rank > 350) continue;
-    list.push(toPlayerView(player, id));
+    const view = toPlayerView(player, id, undefined, extras);
+    if (view.rank > 350) continue;
+    list.push(view);
   }
   list.sort((a, b) => a.rank - b.rank);
   return list.slice(0, 250);
@@ -249,6 +254,13 @@ export async function buildLiveState(
     getTradedPicks(draftId),
     getNflPlayers(),
   ]);
+
+  const draftYear = Number(draft.season);
+  const lastSeasonYear =
+    Number.isFinite(draftYear) && draftYear > 2000
+      ? draftYear - 1
+      : new Date().getFullYear() - 1;
+  const nflversePromise = getNflverseSeason(lastSeasonYear);
 
   let league: SleeperLeague | null = null;
   let users: SleeperLeagueUser[] = [];
@@ -270,6 +282,21 @@ export async function buildLiveState(
     league?.scoring_settings?.rec,
   );
   const positions = rosterPositionsFor(draft, league);
+  const superflex = isSuperflex(positions);
+  const ffcYear =
+    Number.isFinite(draftYear) && draftYear > 2000 ? draftYear : lastSeasonYear + 1;
+
+  const [ffcPlayers, nflverse] = await Promise.all([
+    getFfcAdp({
+      scoringType,
+      superflex,
+      teams: draft.settings.teams,
+      year: ffcYear,
+    }),
+    nflversePromise,
+  ]);
+  const extras = buildEnrichmentIndex(players, ffcPlayers, nflverse, scoringType);
+
   const { rosterId: userRosterId } = resolveUserSlot(
     user,
     draft,
@@ -295,7 +322,7 @@ export async function buildLiveState(
     userRosterId != null
       ? picks.filter((pick) => Number(pick.roster_id) === Number(userRosterId))
       : [];
-  const roster = fillRosterSlots(userPicks, positions, players);
+  const roster = fillRosterSlots(userPicks, positions, players, extras);
 
   const recommendations =
     unsupported || userRosterId == null
@@ -314,6 +341,7 @@ export async function buildLiveState(
           picks,
           players,
           picksUntilUser: clock.picksUntilUser,
+          extras,
         });
 
   const slotToUser = invertDraftOrder(draft.draft_order);
@@ -331,7 +359,12 @@ export async function buildLiveState(
       return {
         pickNo: pick.pick_no,
         round: pick.round,
-        player: toPlayerView(players[pick.player_id], pick.player_id, pick.metadata),
+        player: toPlayerView(
+          players[pick.player_id],
+          pick.player_id,
+          pick.metadata,
+          extras,
+        ),
         pickedByName: manager.displayName,
         isYou: manager.isYou,
       };
@@ -347,7 +380,7 @@ export async function buildLiveState(
       draftId,
       pickNo: clock.pickNo,
       scoringType,
-      isSuperflex: isSuperflex(positions),
+      isSuperflex: superflex,
       leagueName: draftName(draft, league),
       picksUntilUser: clock.picksUntilUser,
       rosterHoles: rosterHoleLabels(roster),
@@ -366,7 +399,7 @@ export async function buildLiveState(
       teams: draft.settings.teams,
       rounds: draft.settings.rounds,
       scoringType,
-      isSuperflex: isSuperflex(positions),
+      isSuperflex: superflex,
     },
     leagueName: league?.name || draft.metadata?.name || "Sleeper draft",
     unsupported,
@@ -375,6 +408,6 @@ export async function buildLiveState(
     recommendations,
     coachNote,
     recentPicks,
-    available: availableBoard(picks, players),
+    available: availableBoard(picks, players, extras),
   };
 }

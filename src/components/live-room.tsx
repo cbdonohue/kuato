@@ -20,6 +20,49 @@ function clockLabel(state: LiveState): string {
   return "Waiting on draft order";
 }
 
+function formatAdp(value: number | null, fallback: number): string {
+  const n = value ?? fallback;
+  if (n >= 100) return String(Math.round(n));
+  const rounded = Math.round(n * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function adpDelta(pickNo: number, adp: number | null): string | null {
+  if (adp == null) return null;
+  const delta = pickNo - adp;
+  if (Math.abs(delta) < 0.5) return null;
+  return `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`;
+}
+
+function recMeta(player: PlayerView, pickNo: number): string {
+  const bits: string[] = [];
+  if (player.adp != null) {
+    bits.push(`ADP ${formatAdp(player.adp, player.rank)}`);
+    const delta = adpDelta(pickNo, player.adp);
+    if (delta) bits.push(`Δ ${delta}`);
+  } else {
+    bits.push(`Rank ${player.sleeperRank >= 9999 ? "—" : player.sleeperRank}`);
+  }
+  bits.push(player.team);
+  if (player.byeWeek != null) bits.push(`bye ${player.byeWeek}`);
+  if (player.injuryStatus) bits.push(player.injuryStatus);
+  if (player.depth) bits.push(player.depth);
+  if (player.rookie) bits.push("Rookie");
+  else if (player.yearsExp != null) bits.push(`${player.yearsExp} yr`);
+  else if (player.age != null) bits.push(`${player.age}y`);
+  return bits.join(" · ");
+}
+
+function lastSeasonLine(player: PlayerView): string | null {
+  const ly = player.lastSeason;
+  if (!ly) return null;
+  const bits = [`${ly.season} · ${ly.fantasyPts.toFixed(0)} pts`];
+  if (ly.snapPct != null) bits.push(`${ly.snapPct}% snaps`);
+  bits.push(`${ly.games}g`);
+  if (ly.line) bits.push(ly.line);
+  return bits.join(" · ");
+}
+
 function scoreChip(label: string, value: number) {
   return (
     <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-muted">
@@ -185,7 +228,9 @@ export function LiveRoom({
               </p>
             ) : (
               <ol className="divide-y divide-panel-border">
-                {state.recommendations.map((rec, index) => (
+                {state.recommendations.map((rec, index) => {
+                  const ly = lastSeasonLine(rec.player);
+                  return (
                   <li key={rec.player.playerId} className="flex flex-col gap-2 px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
@@ -195,11 +240,9 @@ export function LiveRoom({
                         <div>
                           <p className="font-medium">{rec.player.name}</p>
                           <p className="text-xs text-muted">
-                            ADP/rank {rec.player.rank} · {rec.player.team}
-                            {rec.player.injuryStatus
-                              ? ` · ${rec.player.injuryStatus}`
-                              : ""}
+                            {recMeta(rec.player, state.clock.pickNo)}
                           </p>
+                          {ly ? <p className="text-xs text-muted">{ly}</p> : null}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -217,7 +260,8 @@ export function LiveRoom({
                     </div>
                     <p className="text-xs text-muted">{rec.reasons.join(" · ")}</p>
                   </li>
-                ))}
+                  );
+                })}
               </ol>
             )}
           </div>
@@ -306,6 +350,27 @@ export function LiveRoom({
           </div>
         </section>
       </div>
+      <p className="pb-2 text-xs text-muted">
+        ADP from{" "}
+        <a
+          href="https://fantasyfootballcalculator.com"
+          className="text-accent underline-offset-2 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Fantasy Football Calculator
+        </a>
+        . Stats from{" "}
+        <a
+          href="https://github.com/nflverse"
+          className="text-accent underline-offset-2 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          nflverse
+        </a>
+        .
+      </p>
     </div>
   );
 }
@@ -316,15 +381,39 @@ function AvailableList({ players }: { players: PlayerView[] }) {
   }
   return (
     <ul className="max-h-[32rem] divide-y divide-panel-border overflow-auto">
+      <li className="sticky top-0 flex items-center gap-3 bg-panel px-4 py-1.5 font-mono text-[10px] uppercase tracking-wide text-muted">
+        <span className="w-10">ADP</span>
+        <span className="flex-1">Player</span>
+        <span className="w-8 text-right">Bye</span>
+        <span className="w-10 text-right">LY</span>
+        <span className="w-10" />
+      </li>
       {players.map((player) => (
         <li
           key={player.playerId}
-          className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+          className="flex items-start justify-between gap-3 px-4 py-2 text-sm"
         >
-          <span className="font-mono w-8 text-xs text-muted">{player.rank}</span>
-          <span className="flex-1">
-            {player.name}{" "}
-            <span className="text-muted">{player.team}</span>
+          <span className="w-10 font-mono text-xs text-muted">
+            {formatAdp(player.adp, player.rank)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">
+              {player.name}{" "}
+              <span className="text-muted">{player.team}</span>
+            </span>
+            {player.depth || player.rookie ? (
+              <span className="block text-[11px] text-muted">
+                {[player.depth, player.rookie ? "Rookie" : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            ) : null}
+          </span>
+          <span className="w-8 text-right font-mono text-xs text-muted">
+            {player.byeWeek ?? "—"}
+          </span>
+          <span className="w-10 text-right font-mono text-xs text-muted">
+            {player.lastSeason ? player.lastSeason.fantasyPts.toFixed(0) : "—"}
           </span>
           <PositionBadge position={player.position} />
         </li>

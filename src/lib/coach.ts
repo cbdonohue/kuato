@@ -60,7 +60,12 @@ function buildPrompt(opts: {
 }): string {
   const lines = opts.recommendations.slice(0, 5).map((rec, index) => {
     const s = rec.scores;
-    return `${index + 1}. ${rec.player.name} (${rec.player.position}, ${rec.player.team}) rank ${rec.player.rank} — value ${s.value}, need ${s.need}, scarcity ${s.scarcity}, window ${s.window}, total ${s.total}. ${rec.reasons.join("; ")}`;
+    const ly = rec.player.lastSeason
+      ? ` LY ${rec.player.lastSeason.fantasyPts} pts`
+      : "";
+    const adp =
+      rec.player.adp != null ? ` ADP ${rec.player.adp}` : ` rank ${rec.player.rank}`;
+    return `${index + 1}. ${rec.player.name} (${rec.player.position}, ${rec.player.team})${adp}${ly} — value ${s.value}, need ${s.need}, scarcity ${s.scarcity}, window ${s.window}, total ${s.total}. ${rec.reasons.join("; ")}`;
   });
   const when =
     opts.picksUntilUser === 0

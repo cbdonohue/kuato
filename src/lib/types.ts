@@ -114,10 +114,33 @@ export type SleeperPlayer = {
   team?: string | null;
   status?: string | null;
   injury_status?: string | null;
+  injury_start_date?: string | null;
   search_rank?: number | null;
   number?: number | string | null;
   years_exp?: number | null;
+  age?: number | null;
+  college?: string | null;
+  depth_chart_order?: number | null;
+  depth_chart_position?: string | number | null;
+  gsis_id?: string | null;
 };
+
+export type LastSeasonStats = {
+  season: number;
+  games: number;
+  fantasyPts: number;
+  snapPct: number | null;
+  line: string;
+};
+
+export type PlayerExtras = {
+  adp: number | null;
+  adpStdev: number | null;
+  byeWeek: number | null;
+  lastSeason: LastSeasonStats | null;
+};
+
+export type EnrichmentIndex = Map<string, PlayerExtras>;
 
 export type PlayerView = {
   playerId: string;
@@ -125,6 +148,15 @@ export type PlayerView = {
   position: string;
   team: string;
   rank: number;
+  sleeperRank: number;
+  adp: number | null;
+  adpStdev: number | null;
+  byeWeek: number | null;
+  age: number | null;
+  yearsExp: number | null;
+  rookie: boolean;
+  depth: string | null;
+  lastSeason: LastSeasonStats | null;
   injuryStatus: string | null;
 };
 
