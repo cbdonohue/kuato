@@ -13,6 +13,8 @@ npm run dev
 
 Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localhost:3000](http://localhost:3000), sign in, enter a Sleeper username, and open a `drafting` or `pre_draft` league.
 
+To test a Sleeper mock draft, open [http://localhost:3000/debug](http://localhost:3000/debug), paste draft IDs, and open the live room.
+
 ## Optional AI coach
 
 Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. When you are on the clock or within two picks, the live room adds a 2–3 sentence note. Without a key, you still get the score breakdown.

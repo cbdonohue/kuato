@@ -113,6 +113,9 @@ export function LiveRoom({
             <Link href="/" className="text-xs uppercase tracking-[0.18em] text-muted">
               All drafts
             </Link>
+            <Link href="/debug" className="text-xs uppercase tracking-[0.18em] text-muted">
+              Debug
+            </Link>
             <SignOutButton />
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
