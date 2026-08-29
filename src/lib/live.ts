@@ -3,6 +3,7 @@ import { buildEnrichmentIndex } from "./enrich";
 import { getFfcAdp } from "./ffc";
 import { getNflverseSeason } from "./nflverse";
 import {
+  beforeYourPickSummary,
   detectUnsupported,
   fillRosterSlots,
   invertDraftOrder,
@@ -324,10 +325,10 @@ export async function buildLiveState(
       : [];
   const roster = fillRosterSlots(userPicks, positions, players, extras);
 
-  const recommendations =
-    unsupported || userRosterId == null
-      ? []
-      : recommend({
+  const recommendInput =
+    userRosterId == null
+      ? null
+      : {
           teams: draft.settings.teams,
           rounds: draft.settings.rounds,
           draftType: draft.type,
@@ -342,7 +343,9 @@ export async function buildLiveState(
           players,
           picksUntilUser: clock.picksUntilUser,
           extras,
-        });
+        };
+  const recommendations =
+    unsupported || recommendInput == null ? [] : recommend(recommendInput);
 
   const slotToUser = invertDraftOrder(draft.draft_order);
   const recentPicks: RecentPickView[] = [...picks]
@@ -384,6 +387,7 @@ export async function buildLiveState(
       leagueName: draftName(draft, league),
       picksUntilUser: clock.picksUntilUser,
       rosterHoles: rosterHoleLabels(roster),
+      demandSummary: recommendInput ? beforeYourPickSummary(recommendInput) : null,
       recommendations,
     });
   }

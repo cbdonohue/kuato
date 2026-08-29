@@ -201,34 +201,32 @@ describe("recommend", () => {
   });
 
   it("boosts QB need in Superflex when the SF slot is open", () => {
+    const players = {
+      qb1: player("qb1", "QB", 18),
+      qb2: player("qb2", "QB", 45),
+      wrA: player("wrA", "WR", 20),
+      wrB: player("wrB", "WR", 22),
+      wr1: player("wr1", "WR", 40),
+    };
+    const filled = [pick("qb1", 1, 12), pick("wrA", 1, 13), pick("wrB", 1, 14)];
     const oneQb = recommend(
       input({
         rosterPositions,
-        picks: [pick("qb1", 1, 12)],
+        picks: filled,
         pickNo: 25,
-        players: {
-          qb1: player("qb1", "QB", 18),
-          qb2: player("qb2", "QB", 45),
-          wr1: player("wr1", "WR", 40),
-        },
+        players,
       }),
     );
     const superflex = recommend(
       input({
         rosterPositions: [...rosterPositions, "SUPER_FLEX"],
-        picks: [pick("qb1", 1, 12)],
+        picks: filled,
         pickNo: 25,
-        players: {
-          qb1: player("qb1", "QB", 18),
-          qb2: player("qb2", "QB", 45),
-          wr1: player("wr1", "WR", 40),
-        },
+        players,
       }),
     );
-    const qbNeed1 = oneQb.find((rec) => rec.player.playerId === "qb2")?.scores.need ?? 0;
-    const qbNeedSf =
-      superflex.find((rec) => rec.player.playerId === "qb2")?.scores.need ?? 0;
-    expect(qbNeedSf).toBeGreaterThan(qbNeed1);
+    expect(oneQb[0].player.playerId).toBe("wr1");
+    expect(superflex[0].player.playerId).toBe("qb2");
   });
 
   it("uses FFC ADP as rank and falling-vs-ADP copy", () => {
@@ -255,6 +253,84 @@ describe("recommend", () => {
     const recs = recommend(input({ pickNo: 1, players: { wr1: player("wr1", "WR", 8) } }));
     expect(recs[0].player.rank).toBe(8);
     expect(recs[0].player.adp).toBeNull();
+  });
+
+  it("raises an RB over a similar-ADP WR when upcoming teams still need RB", () => {
+    const filled = {
+      r1qb: player("r1qb", "QB", 50),
+      r1wr1: player("r1wr1", "WR", 51),
+      r1wr2: player("r1wr2", "WR", 52),
+      r1te: player("r1te", "TE", 53),
+      r1flex: player("r1flex", "WR", 54),
+      r2qb: player("r2qb", "QB", 55),
+      r2wr1: player("r2wr1", "WR", 56),
+      r2wr2: player("r2wr2", "WR", 57),
+      r2te: player("r2te", "TE", 58),
+      r2flex: player("r2flex", "WR", 59),
+      rb1: player("rb1", "RB", 20),
+      wr1: player("wr1", "WR", 20),
+    };
+    const recs = recommend(
+      input({
+        userRosterId: 3,
+        pickNo: 1,
+        picksUntilUser: 2,
+        scoringType: "std",
+        players: filled,
+        picks: [
+          pick("r1qb", 1, 10),
+          pick("r1wr1", 1, 11),
+          pick("r1wr2", 1, 12),
+          pick("r1te", 1, 13),
+          pick("r1flex", 1, 14),
+          pick("r2qb", 2, 15),
+          pick("r2wr1", 2, 16),
+          pick("r2wr2", 2, 17),
+          pick("r2te", 2, 18),
+          pick("r2flex", 2, 19),
+        ],
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("rb1");
+    expect(recs[0].reasons).toContain("2 of the next 2 picks still need RB");
+  });
+
+  it("tags the last WR before an 8+ ADP gap", () => {
+    const recs = recommend(
+      input({
+        pickNo: 10,
+        players: {
+          wrA: player("wrA", "WR", 10),
+          wrB: player("wrB", "WR", 12),
+          wrC: player("wrC", "WR", 30),
+          rb1: player("rb1", "RB", 4),
+        },
+      }),
+    );
+    const wrB = recs.find((rec) => rec.player.playerId === "wrB");
+    expect(wrB?.reasons).toContain("Last WR before a 18-pick ADP gap");
+  });
+
+  it("boosts a WR who stacks with the user's QB", () => {
+    const recs = recommend(
+      input({
+        pickNo: 25,
+        picks: [pick("phiqb", 1, 12)],
+        players: {
+          phiqb: player("phiqb", "QB", 18, {
+            first_name: "Jalen",
+            last_name: "Hurts",
+            full_name: "Jalen Hurts",
+            team: "PHI",
+          }),
+          phiwr: player("phiwr", "WR", 40, { team: "PHI", full_name: "A.J. Brown" }),
+          otherwr: player("otherwr", "WR", 39, { team: "KC", full_name: "Xavier Worthy" }),
+        },
+      }),
+    );
+    const stacked = recs.find((rec) => rec.player.playerId === "phiwr");
+    expect(stacked?.reasons).toContain("Stacks with Jalen Hurts");
+    expect(recs[0].player.playerId).toBe("phiwr");
   });
 });
 

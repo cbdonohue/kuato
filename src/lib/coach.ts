@@ -27,6 +27,7 @@ export async function getCoachNote(opts: {
   leagueName: string;
   picksUntilUser: number | null;
   rosterHoles: string[];
+  demandSummary?: string | null;
   recommendations: Recommendation[];
 }): Promise<string | null> {
   if (!hasLlmKey()) return null;
@@ -56,16 +57,16 @@ function buildPrompt(opts: {
   leagueName: string;
   picksUntilUser: number | null;
   rosterHoles: string[];
+  demandSummary?: string | null;
   recommendations: Recommendation[];
 }): string {
   const lines = opts.recommendations.slice(0, 5).map((rec, index) => {
-    const s = rec.scores;
     const ly = rec.player.lastSeason
       ? ` LY ${rec.player.lastSeason.fantasyPts} pts`
       : "";
     const adp =
       rec.player.adp != null ? ` ADP ${rec.player.adp}` : ` rank ${rec.player.rank}`;
-    return `${index + 1}. ${rec.player.name} (${rec.player.position}, ${rec.player.team})${adp}${ly} — value ${s.value}, need ${s.need}, scarcity ${s.scarcity}, window ${s.window}, total ${s.total}. ${rec.reasons.join("; ")}`;
+    return `${index + 1}. ${rec.player.name} (${rec.player.position}, ${rec.player.team})${adp}${ly}. ${rec.reasons.join("; ")}`;
   });
   const when =
     opts.picksUntilUser === 0
@@ -76,9 +77,10 @@ function buildPrompt(opts: {
     `League: ${opts.leagueName}. Scoring: ${opts.scoringType}. Superflex: ${opts.isSuperflex ? "yes" : "no"}.`,
     when,
     `Open starter holes: ${opts.rosterHoles.length ? opts.rosterHoles.join(", ") : "none (bench / depth)"}.`,
+    opts.demandSummary || "Before your pick: you are on the clock.",
     `Ranked recommendations:`,
     ...lines,
-    `Write 2-3 sentences. Name who to take and why. Mention one player to fade. No preamble, no markdown.`,
+    `Write 2-3 sentences. Name who to take and why. Mention one player to fade (someone likely to last). No preamble, no markdown.`,
   ].join("\n");
 }
 

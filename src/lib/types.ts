@@ -160,17 +160,8 @@ export type PlayerView = {
   injuryStatus: string | null;
 };
 
-export type ScoreBreakdown = {
-  value: number;
-  need: number;
-  scarcity: number;
-  window: number;
-  total: number;
-};
-
 export type Recommendation = {
   player: PlayerView;
-  scores: ScoreBreakdown;
   reasons: string[];
 };
 

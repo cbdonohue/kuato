@@ -300,45 +300,182 @@ function needScore(
   return score;
 }
 
-function scarcityScore(
+function wantsPosition(
+  holes: ReturnType<typeof remainingHoles>,
   position: string,
-  pickNo: number,
-  available: PlayerView[],
-  rosterPositions: string[],
-  teams: number,
-  draftedAtPos: number,
-): number {
-  const horizon = pickNo + 18;
-  const eliteLeft = available.filter(
-    (player) => player.position === position && player.rank <= horizon,
-  ).length;
-  const dedicatedPerTeam = rosterPositions.filter((slot) => slot === position).length;
-  const remainingDedicated = dedicatedPerTeam * teams - draftedAtPos;
-  if (eliteLeft === 0) return 0.15;
-  if (eliteLeft <= Math.max(1, remainingDedicated * 0.5)) return 1.8;
-  if (eliteLeft <= Math.max(1, remainingDedicated)) return 1.1;
-  return 0.3;
+): boolean {
+  if ((holes.dedicated[position] ?? 0) > 0) return true;
+  if (holes.flex > 0 && FLEX_ELIGIBLE.has(position)) return true;
+  if (holes.superflex > 0 && SUPERFLEX_ELIGIBLE.has(position)) return true;
+  return false;
 }
 
-function windowScore(
-  rank: number,
-  pickNo: number,
-  picksUntilUser: number | null,
-): number {
-  if (!picksUntilUser || picksUntilUser <= 0) return 0;
-  const nextUserPick = pickNo + picksUntilUser;
-  if (rank + 6 < nextUserPick) return 1.4;
-  if (rank < nextUserPick) return 0.6;
-  return 0;
+const DEMAND_POSITIONS = ["QB", "RB", "WR", "TE"] as const;
+
+export function upcomingDemand(input: RecommendInput): {
+  upcoming: number;
+  counts: Record<string, number>;
+  weights: Record<string, number>;
+} {
+  const counts: Record<string, number> = { QB: 0, RB: 0, WR: 0, TE: 0 };
+  const weights: Record<string, number> = { QB: 0, RB: 0, WR: 0, TE: 0 };
+  const upcoming =
+    input.picksUntilUser != null && input.picksUntilUser > 0
+      ? input.picksUntilUser
+      : 0;
+  if (!upcoming) return { upcoming: 0, counts, weights };
+
+  const clock: ClockInput = {
+    teams: input.teams,
+    rounds: input.rounds,
+    draftType: input.draftType,
+    slotToRoster: input.slotToRoster,
+    tradedPicks: input.tradedPicks,
+    season: input.season,
+  };
+  const superflex = isSuperflex(input.rosterPositions);
+  const holeCache = new Map<number, ReturnType<typeof remainingHoles>>();
+
+  for (let offset = 0; offset < upcoming; offset += 1) {
+    const rosterId = rosterForPick(input.pickNo + offset, clock);
+    if (rosterId == null) continue;
+    let holes = holeCache.get(rosterId);
+    if (!holes) {
+      const rosterPicks = input.picks.filter(
+        (pick) => Number(pick.roster_id) === rosterId,
+      );
+      holes = remainingHoles(
+        fillRosterSlots(
+          rosterPicks,
+          input.rosterPositions,
+          input.players,
+          input.extras,
+        ),
+      );
+      holeCache.set(rosterId, holes);
+    }
+    for (const position of DEMAND_POSITIONS) {
+      if (!wantsPosition(holes, position)) continue;
+      counts[position] += 1;
+      const sfQb =
+        superflex &&
+        position === "QB" &&
+        ((holes.dedicated.QB ?? 0) > 0 || holes.superflex > 0);
+      weights[position] += sfQb ? 1.5 : 1;
+    }
+  }
+
+  return { upcoming, counts, weights };
 }
 
-function reasonsFor(scores: Recommendation["scores"], position: string): string[] {
+export function beforeYourPickSummary(input: RecommendInput): string | null {
+  const { upcoming, counts } = upcomingDemand(input);
+  if (!upcoming) return null;
+  const parts = DEMAND_POSITIONS.filter((position) => counts[position] > 0).map(
+    (position) => `${counts[position]} still need ${position}`,
+  );
+  if (parts.length === 0) {
+    return `Before your pick: none of the next ${upcoming} picks have an obvious starter hole.`;
+  }
+  return `Before your pick: ${parts.join(", ")}.`;
+}
+
+const TIER_GAP = 8;
+
+type TierBoost = {
+  score: number;
+  gap: number;
+  last: boolean;
+};
+
+function tierBoosts(available: PlayerView[]): Map<string, TierBoost> {
+  const byPosition = new Map<string, PlayerView[]>();
+  for (const player of available) {
+    if (!SKILL_POSITIONS.has(player.position)) continue;
+    const list = byPosition.get(player.position) ?? [];
+    list.push(player);
+    byPosition.set(player.position, list);
+  }
+
+  const boosts = new Map<string, TierBoost>();
+  for (const list of byPosition.values()) {
+    const sorted = [...list].sort((a, b) => a.rank - b.rank);
+    let start = 0;
+    for (let index = 1; index <= sorted.length; index += 1) {
+      const atEnd = index === sorted.length;
+      const gap = atEnd ? 0 : sorted[index].rank - sorted[index - 1].rank;
+      const cliff = !atEnd && gap >= TIER_GAP;
+      if (!cliff && !atEnd) continue;
+      if (cliff) {
+        const lastIndex = index - 1;
+        const roundedGap = Math.round(gap);
+        boosts.set(sorted[lastIndex].playerId, {
+          score: 1.4,
+          gap: roundedGap,
+          last: true,
+        });
+        if (lastIndex - 1 >= start) {
+          boosts.set(sorted[lastIndex - 1].playerId, {
+            score: 0.9,
+            gap: roundedGap,
+            last: false,
+          });
+        }
+      }
+      start = index;
+    }
+  }
+  return boosts;
+}
+
+function stackPartner(
+  player: PlayerView,
+  roster: RosterSlotView[],
+): PlayerView | null {
+  if (LATE_ONLY.has(player.position) || !player.team || player.team === "FA") {
+    return null;
+  }
+  const teammates = roster
+    .map((entry) => entry.player)
+    .filter((mate): mate is PlayerView => Boolean(mate && mate.team === player.team));
+  if (player.position === "QB") {
+    return teammates.find((mate) => mate.position === "WR" || mate.position === "TE") ?? null;
+  }
+  if (player.position === "WR" || player.position === "TE") {
+    return teammates.find((mate) => mate.position === "QB") ?? null;
+  }
+  return null;
+}
+
+function demandScore(weight: number): number {
+  if (weight <= 0) return 0;
+  return clamp(weight * 0.55, 0, 2.2);
+}
+
+function reasonsFor(opts: {
+  value: number;
+  need: number;
+  demandCount: number;
+  upcoming: number;
+  position: string;
+  tier: TierBoost | undefined;
+  stackName: string | null;
+}): string[] {
   const reasons: string[] = [];
-  if (scores.value >= 1) reasons.push("Falling vs ADP");
-  if (scores.need >= 2) reasons.push("Fills a starter hole");
-  else if (scores.need >= 1.2) reasons.push(`Helps ${position} / flex depth`);
-  if (scores.scarcity >= 1.2) reasons.push("Position is thinning");
-  if (scores.window >= 1) reasons.push("Unlikely to last until your next pick");
+  if (opts.need >= 2) reasons.push("Fills a starter hole");
+  else if (opts.need >= 1.2) reasons.push(`Helps ${opts.position} / flex depth`);
+  if (opts.demandCount >= 1 && opts.upcoming >= 1) {
+    reasons.push(
+      `${opts.demandCount} of the next ${opts.upcoming} picks still need ${opts.position}`,
+    );
+  }
+  if (opts.tier?.last) {
+    reasons.push(
+      `Last ${opts.position} before a ${opts.tier.gap}-pick ADP gap`,
+    );
+  }
+  if (opts.stackName) reasons.push(`Stacks with ${opts.stackName}`);
+  if (opts.value >= 1) reasons.push("Falling vs ADP");
   if (reasons.length === 0) reasons.push("Best available on the board");
   return reasons;
 }
@@ -375,47 +512,40 @@ export function recommend(input: RecommendInput): Recommendation[] {
     available.push(view);
   }
 
-  const draftedByPos: Record<string, number> = {};
-  for (const pick of input.picks) {
-    const pos =
-      input.players[pick.player_id]?.position || pick.metadata?.position || "";
-    if (!pos) continue;
-    draftedByPos[pos] = (draftedByPos[pos] ?? 0) + 1;
-  }
+  const demand = upcomingDemand(input);
+  const tiers = tierBoosts(available);
 
-  const scored: Recommendation[] = available.map((player) => {
+  const scored = available.map((player) => {
     const value = clamp((input.pickNo - player.rank) / 10, -2.5, 4);
     const need = needScore(player.position, holes, input.scoringType, superflex);
-    const scarcity = scarcityScore(
-      player.position,
-      input.pickNo,
-      available,
-      input.rosterPositions,
-      input.teams,
-      draftedByPos[player.position] ?? 0,
-    );
-    const window = windowScore(player.rank, input.pickNo, input.picksUntilUser);
-    const total = value * 1.0 + need * 1.15 + scarcity * 0.85 + window * 0.9;
-    const scores = {
-      value: round2(value),
-      need: round2(need),
-      scarcity: round2(scarcity),
-      window: round2(window),
-      total: round2(total),
-    };
+    const demandWeight = demand.weights[player.position] ?? 0;
+    const demandCount = demand.counts[player.position] ?? 0;
+    const tier = tiers.get(player.playerId);
+    const partner = stackPartner(player, roster);
+    const stack = partner ? 1 : 0;
+    const total =
+      value * 1.0 +
+      need * 1.15 +
+      demandScore(demandWeight) * 1.0 +
+      (tier?.score ?? 0) * 0.9 +
+      stack * 0.5;
     return {
       player,
-      scores,
-      reasons: reasonsFor(scores, player.position),
+      total,
+      reasons: reasonsFor({
+        value,
+        need,
+        demandCount,
+        upcoming: demand.upcoming,
+        position: player.position,
+        tier,
+        stackName: partner?.name ?? null,
+      }),
     };
   });
 
-  scored.sort((a, b) => b.scores.total - a.scores.total);
-  return scored.slice(0, 5);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+  scored.sort((a, b) => b.total - a.total);
+  return scored.slice(0, 5).map(({ player, reasons }) => ({ player, reasons }));
 }
 
 export function userPicksForRoster(

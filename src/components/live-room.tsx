@@ -63,14 +63,6 @@ function lastSeasonLine(player: PlayerView): string | null {
   return bits.join(" · ");
 }
 
-function scoreChip(label: string, value: number) {
-  return (
-    <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-muted">
-      {label} {value.toFixed(1)}
-    </span>
-  );
-}
-
 export function LiveRoom({
   draftId,
   username,
@@ -247,16 +239,7 @@ export function LiveRoom({
                       </div>
                       <div className="flex items-center gap-2">
                         <PositionBadge position={rec.player.position} />
-                        <span className="font-mono text-sm text-accent">
-                          {rec.scores.total.toFixed(1)}
-                        </span>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {scoreChip("value", rec.scores.value)}
-                      {scoreChip("need", rec.scores.need)}
-                      {scoreChip("scarce", rec.scores.scarcity)}
-                      {scoreChip("window", rec.scores.window)}
                     </div>
                     <p className="text-xs text-muted">{rec.reasons.join(" · ")}</p>
                   </li>
