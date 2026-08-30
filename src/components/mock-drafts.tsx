@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "football-debug-drafts";
 
@@ -26,32 +26,51 @@ function roomHref(draftId: string, username: string): string {
   return `/draft/${encodeURIComponent(draftId)}?username=${encodeURIComponent(username)}`;
 }
 
+function emptyStored(): Stored {
+  return { username: "", draftIds: "" };
+}
+
+function readStored(): Stored {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptyStored();
+    const parsed = JSON.parse(raw) as Stored;
+    return {
+      username: parsed.username ?? "",
+      draftIds: parsed.draftIds ?? "",
+    };
+  } catch {
+    return emptyStored();
+  }
+}
+
+function useIsClient() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 export function MockDrafts() {
-  const [username, setUsername] = useState("");
-  const [draftIds, setDraftIds] = useState("");
-  const [ready, setReady] = useState(false);
+  const isClient = useIsClient();
+  if (!isClient) {
+    return <p className="text-sm text-muted">Loading saved IDs…</p>;
+  }
+  return <MockDraftsForm />;
+}
+
+function MockDraftsForm() {
+  const stored = readStored();
+  const [username, setUsername] = useState(stored.username);
+  const [draftIds, setDraftIds] = useState(stored.draftIds);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Stored;
-        setUsername(parsed.username ?? "");
-        setDraftIds(parsed.draftIds ?? "");
-      }
-    } catch {
-      // ignore bad local storage
-    }
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ username, draftIds } satisfies Stored),
     );
-  }, [username, draftIds, ready]);
+  }, [username, draftIds]);
 
   const ids = useMemo(() => parseDraftIds(draftIds), [draftIds]);
   const handle = username.trim();
@@ -68,10 +87,6 @@ export function MockDrafts() {
       return existing.length ? `${current.replace(/\s+$/, "")}\n${next}` : next;
     });
     input.value = "";
-  }
-
-  if (!ready) {
-    return <p className="text-sm text-muted">Loading saved IDs…</p>;
   }
 
   return (

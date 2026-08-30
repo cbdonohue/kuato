@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchText, loadDayCache } from "./cache";
+import { fetchText } from "./cache";
 import {
   canonPosition,
   canonTeam,

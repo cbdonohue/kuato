@@ -56,5 +56,20 @@ describe("MockDrafts", () => {
     await user.type(screen.getByPlaceholderText("Mock draft ID"), "abc");
     await user.click(screen.getByRole("button", { name: "Save ID" }));
     expect(screen.getAllByText("abc")).toHaveLength(2);
+
+    await user.type(
+      screen.getByPlaceholderText("Username you joined the mock with"),
+      "sam",
+    );
+    expect(screen.getByRole("link", { name: "Open room" })).toHaveAttribute(
+      "href",
+      "/draft/abc?username=sam",
+    );
+
+    const textarea = screen.getByPlaceholderText(/One Sleeper draft ID per line/);
+    await user.clear(textarea);
+    await user.type(textarea, "aaa{Enter}bbb");
+    expect(screen.getByText("aaa")).toBeInTheDocument();
+    expect(screen.getByText("bbb")).toBeInTheDocument();
   });
 });

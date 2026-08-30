@@ -1,0 +1,60 @@
+name: Bug report
+description: Something is broken or looks wrong
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not include `SITE_PASSWORD`, API keys, or session cookies.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw versus what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in
+        2. Open a draft
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - Sign-in
+        - Username lookup / Your drafts
+        - Mock draft
+        - Live room recommendations
+        - Remaining board
+        - AI coach (Ask / Scout / Compare / Review)
+        - Tests or CI
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: draft
+    attributes:
+      label: Draft or league (optional)
+      description: Sleeper draft ID, scoring (PPR / half-PPR / standard / Superflex), and whether it was a mock.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        Browser:
+        Node:
+        `npm run dev` vs production:
+  - type: textarea
+    id: extra
+    attributes:
+      label: Logs or screenshots
+      description: Redact secrets. A screenshot of the live room is often enough.

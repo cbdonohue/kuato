@@ -346,7 +346,7 @@ export async function buildLiveState(
           picksUntilUser: clock.picksUntilUser,
           extras,
         };
-  let recommendations =
+  const recommendations =
     unsupported || recommendInput == null ? [] : recommend(recommendInput);
 
   let newsSources: string[] = [];
