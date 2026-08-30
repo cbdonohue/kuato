@@ -10,12 +10,14 @@ import {
   invertDraftOrder,
   isSuperflex,
   nextPickNumber,
+  pickRosterId,
   picksUntilRosterOnClock,
   recommend,
   rosterForPick,
   scoringFromSettings,
   slotForPick,
   toPlayerView,
+  userPicksForRoster,
 } from "./recommend";
 import {
   getDraft,
@@ -94,7 +96,10 @@ export function resolveUserSlot(
 
   const ownPick = picks.find((pick) => pick.picked_by === user.user_id);
   if (ownPick) {
-    return { slot: ownPick.draft_slot ?? null, rosterId: Number(ownPick.roster_id) };
+    return {
+      slot: ownPick.draft_slot ?? null,
+      rosterId: pickRosterId(ownPick, draft.slot_to_roster_id ?? {}),
+    };
   }
 
   return { slot: null, rosterId: null };
@@ -142,13 +147,11 @@ export function resolvePickManager(
     rosters: SleeperRoster[];
     slotToUser: Record<number, string>;
     userRosterId: number | null;
+    slotToRoster?: Record<string, number>;
   },
 ): { userId: string | null; displayName: string; isYou: boolean } {
   const slot = pick.draft_slot ?? null;
-  const rosterId =
-    pick.roster_id === "" || pick.roster_id == null
-      ? null
-      : Number(pick.roster_id);
+  const rosterId = pickRosterId(pick, opts.slotToRoster ?? {});
   const userId =
     (pick.picked_by && pick.picked_by.trim()) ||
     userIdForRoster(rosterId, opts.rosters, opts.slotToUser, slot) ||
@@ -321,9 +324,10 @@ export async function buildLiveState(
     tradedPicks,
   });
 
+  const slotToRoster = draft.slot_to_roster_id ?? {};
   const userPicks =
     userRosterId != null
-      ? picks.filter((pick) => Number(pick.roster_id) === Number(userRosterId))
+      ? userPicksForRoster(picks, userRosterId, slotToRoster)
       : [];
   const roster = fillRosterSlots(userPicks, positions, players, extras);
 
@@ -334,7 +338,7 @@ export async function buildLiveState(
           teams: draft.settings.teams,
           rounds: draft.settings.rounds,
           draftType: draft.type,
-          slotToRoster: draft.slot_to_roster_id ?? {},
+          slotToRoster,
           tradedPicks,
           season: draft.season,
           pickNo: nextPickNumber(picks),
@@ -368,6 +372,7 @@ export async function buildLiveState(
         rosters,
         slotToUser,
         userRosterId,
+        slotToRoster,
       });
       return {
         pickNo: pick.pick_no,

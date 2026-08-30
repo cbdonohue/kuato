@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - ESLint issues that would fail the new CI lint step (`prefer-const`, unused import, React purity on AI triggers, localStorage hydration)
+- Mock-draft roster panel and need scoring when Sleeper leaves `roster_id` empty (attribute picks by `draft_slot`)
 
 ## [0.1.0] - 2026-08-30
 
