@@ -350,4 +350,25 @@ describe("buildLiveState", () => {
     expect(state.leagueName).toBe("Home League");
     expect(state.recommendations.length).toBeGreaterThan(0);
   });
+
+  it("hides recommendations when the user is not seated and still lists recent picks", async () => {
+    vi.mocked(getUser).mockResolvedValue({
+      user_id: "ghost",
+      username: "ghost",
+      display_name: "Ghost",
+      avatar: null,
+    });
+    vi.mocked(getDraft).mockResolvedValue(draft({ draft_order: { u2: 2 } }));
+    vi.mocked(getDraftPicks).mockResolvedValue([
+      pick("rb1", 2, 1, { picked_by: "u2" }),
+    ]);
+    const state = await buildLiveState("d1", "ghost");
+    expect(state.recommendations).toEqual([]);
+    expect(state.coachNote).toBeNull();
+    expect(state.recentPicks[0]).toMatchObject({
+      pickNo: 1,
+      pickedByName: "Ada",
+      isYou: false,
+    });
+  });
 });

@@ -2,10 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { fetchText, loadDayCache, loadTtlCache } from "./cache";
 
-vi.mock("fs/promises", () => ({
+const fsMocks = vi.hoisted(() => ({
   mkdir: vi.fn(),
   readFile: vi.fn(),
   writeFile: vi.fn(),
+}));
+
+vi.mock("fs/promises", () => ({
+  ...fsMocks,
+  default: fsMocks,
 }));
 
 afterEach(() => {

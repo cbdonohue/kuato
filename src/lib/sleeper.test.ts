@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import {
   getDraft,
   getDraftPicks,
+  getLeague,
   getLeagueRosters,
   getLeagueUsers,
+  getNflPlayers,
   getNflState,
   getTradedPicks,
   getUser,
@@ -11,8 +14,22 @@ import {
   SleeperNotFoundError,
 } from "./sleeper";
 
+const fsMocks = vi.hoisted(() => ({
+  mkdir: vi.fn(),
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+}));
+
+vi.mock("fs/promises", () => ({
+  ...fsMocks,
+  default: fsMocks,
+}));
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.mocked(mkdir).mockReset();
+  vi.mocked(readFile).mockReset();
+  vi.mocked(writeFile).mockReset();
 });
 
 function jsonResponse(status: number, body: unknown) {
@@ -50,5 +67,28 @@ describe("sleeperGet wrappers", () => {
     expect(await getTradedPicks("d1")).toEqual([]);
     expect(await getLeagueUsers("l1")).toEqual([]);
     expect(await getLeagueRosters("l1")).toEqual([]);
+  });
+
+  it("loads a league", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(200, { league_id: "l1", name: "Home" })),
+    );
+    await expect(getLeague("l1")).resolves.toMatchObject({ league_id: "l1" });
+  });
+});
+
+describe("getNflPlayers", () => {
+  it("fetches active players, writes the cache, and serves memory next", async () => {
+    vi.mocked(readFile).mockRejectedValue(new Error("missing"));
+    vi.mocked(mkdir).mockResolvedValue(undefined);
+    vi.mocked(writeFile).mockResolvedValue(undefined);
+    const players = { "1": { player_id: "1", full_name: "Ja'Marr Chase" } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, players)));
+
+    await expect(getNflPlayers()).resolves.toEqual(players);
+    await expect(getNflPlayers()).resolves.toEqual(players);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(writeFile).toHaveBeenCalled();
   });
 });
