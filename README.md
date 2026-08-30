@@ -104,6 +104,7 @@ Coverage must stay at 80% or higher. CI runs lint, typecheck, and coverage on ev
 
 - [Architecture](docs/architecture.md) — how a live room is assembled
 - [Deploy](docs/deploy.md) — Vercel or any Node 20 host
+- [0.1.1 release notes](docs/releases/0.1.1.md)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)
