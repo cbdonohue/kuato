@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Deploy notes under `docs/deploy.md`
 - `AI_MODEL` override for the coach (documented in `.env.example` and honored in `src/lib/llm.ts`)
+- GitHub-ready release notes at `docs/releases/0.1.1.md`
 
 ### Removed
 
