@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sleeper Draft Assistant",
+  title: "Kuato",
   description: "Live redraft pick recommendations for Sleeper fantasy football",
 };
 
