@@ -1,6 +1,6 @@
 ---
 description: Optional LLM coach actions, prompts, and client panel
-globs: src/lib/ai.ts, src/lib/ai-run.ts, src/lib/llm.ts, src/lib/coach.ts, src/components/coach-panel.tsx, src/app/api/drafts/[draftId]/ai/**
+globs: src/lib/ai.ts, src/lib/ai-run.ts, src/lib/llm.ts, src/lib/coach.ts, src/components/coach-panel.tsx, src/app/api/drafts/*/ai/**
 alwaysApply: false
 ---
 

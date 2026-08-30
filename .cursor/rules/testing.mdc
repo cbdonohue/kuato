@@ -1,6 +1,6 @@
 ---
 description: Vitest, Testing Library, and coverage conventions
-globs: "**/*.test.ts, **/*.test.tsx, vitest.config.mts, vitest.setup.ts"
+globs: src/**/*.test.ts, src/**/*.test.tsx, vitest.config.mts, vitest.setup.ts
 alwaysApply: false
 ---
 
