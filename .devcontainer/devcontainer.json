@@ -1,0 +1,35 @@
+{
+  "name": "Kuato",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Kuato",
+      "onAutoForward": "openPreview",
+      "requireLocalPort": true
+    }
+  },
+  "waitFor": "postCreateCommand",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": {
+    "Kuato": "bash .devcontainer/start.sh"
+  },
+  "remoteEnv": {
+    "SITE_PASSWORD": "${localEnv:SITE_PASSWORD:kuato}"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"],
+      "settings": {
+        "task.allowAutomaticTasks": "on",
+        "remote.autoForwardPorts": true,
+        "remote.portsAttributes": {
+          "3000": {
+            "label": "Kuato",
+            "onAutoForward": "openPreview"
+          }
+        }
+      }
+    }
+  }
+}

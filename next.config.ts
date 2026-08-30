@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
+import {
+  allowedDevOrigins,
+  serverActionAllowedOrigins,
+} from "./src/lib/dev-origins";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["23.21.247.220"],
+  allowedDevOrigins: allowedDevOrigins(),
+  experimental: {
+    serverActions: {
+      allowedOrigins: serverActionAllowedOrigins(),
+    },
+  },
 };
 
 export default nextConfig;

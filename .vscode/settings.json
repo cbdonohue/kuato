@@ -1,0 +1,10 @@
+{
+  "task.allowAutomaticTasks": "on",
+  "remote.autoForwardPorts": true,
+  "remote.portsAttributes": {
+    "3000": {
+      "label": "Kuato",
+      "onAutoForward": "openPreview"
+    }
+  }
+}
