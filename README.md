@@ -44,4 +44,7 @@ Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. When you are on the
 
 ```bash
 npm test
+npm run test:coverage
 ```
+
+Coverage must stay at 80% or higher (statements, branches, functions, and lines).
