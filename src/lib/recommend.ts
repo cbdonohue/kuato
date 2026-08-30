@@ -89,6 +89,21 @@ export function slotForPick(
   return snake ? teams - indexInRound + 1 : indexInRound;
 }
 
+export function pickRosterId(
+  pick: SleeperPick,
+  slotToRoster: Record<string, number> = {},
+): number | null {
+  if (pick.roster_id !== "" && pick.roster_id != null) {
+    const n = Number(pick.roster_id);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (pick.draft_slot == null) return null;
+  const mapped = slotToRoster[String(pick.draft_slot)];
+  if (mapped == null) return null;
+  const n = Number(mapped);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function rosterForPick(
   pickNo: number,
   input: ClockInput,
@@ -454,8 +469,10 @@ export function upcomingDemand(input: RecommendInput): {
     if (rosterId == null) continue;
     let holes = holeCache.get(rosterId);
     if (!holes) {
-      const rosterPicks = input.picks.filter(
-        (pick) => Number(pick.roster_id) === rosterId,
+      const rosterPicks = userPicksForRoster(
+        input.picks,
+        rosterId,
+        input.slotToRoster,
       );
       holes = remainingHoles(
         fillRosterSlots(
@@ -629,8 +646,10 @@ export function recommend(input: RecommendInput): Recommendation[] {
   const allowKickers = currentRound > input.rounds - 2;
   const superflex = isSuperflex(input.rosterPositions);
 
-  const userPicks = input.picks.filter(
-    (pick) => Number(pick.roster_id) === Number(input.userRosterId),
+  const userPicks = userPicksForRoster(
+    input.picks,
+    input.userRosterId,
+    input.slotToRoster,
   );
   const roster = fillRosterSlots(
     userPicks,
@@ -712,8 +731,11 @@ export function recommend(input: RecommendInput): Recommendation[] {
 export function userPicksForRoster(
   picks: SleeperPick[],
   rosterId: number,
+  slotToRoster: Record<string, number> = {},
 ): SleeperPick[] {
-  return picks.filter((pick) => Number(pick.roster_id) === Number(rosterId));
+  return picks.filter(
+    (pick) => pickRosterId(pick, slotToRoster) === Number(rosterId),
+  );
 }
 
 export function invertDraftOrder(

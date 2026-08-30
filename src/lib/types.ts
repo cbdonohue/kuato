@@ -63,7 +63,7 @@ export type SleeperPickMetadata = {
 export type SleeperPick = {
   player_id: string;
   picked_by: string;
-  roster_id: number | string;
+  roster_id: number | string | null;
   round: number;
   draft_slot: number;
   pick_no: number;

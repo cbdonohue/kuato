@@ -15,6 +15,7 @@ import {
   isDynastyLeague,
   isSuperflex,
   nextPickNumber,
+  pickRosterId,
   picksUntilRosterOnClock,
   playerName,
   productionScore,
@@ -281,6 +282,28 @@ describe("invertDraftOrder and userPicksForRoster", () => {
     const picks = [pick("a", 1, 1), { ...pick("b", 2, 2), roster_id: "1" }, pick("c", 3, 3)];
     expect(userPicksForRoster(picks, 1).map((entry) => entry.player_id)).toEqual(["a", "b"]);
   });
+
+  it("uses draft_slot when Sleeper leaves roster_id empty (mock drafts)", () => {
+    const mockPick = {
+      ...pick("rb1", 2, 12),
+      roster_id: null,
+      draft_slot: 1,
+      picked_by: "u1",
+    };
+    const other = {
+      ...pick("wr1", 2, 2),
+      roster_id: null,
+      draft_slot: 2,
+      picked_by: "",
+    };
+    expect(pickRosterId(mockPick, twelveTeamSnake.slotToRoster)).toBe(1);
+    expect(pickRosterId(other, twelveTeamSnake.slotToRoster)).toBe(2);
+    expect(
+      userPicksForRoster([mockPick, other], 1, twelveTeamSnake.slotToRoster).map(
+        (entry) => entry.player_id,
+      ),
+    ).toEqual(["rb1"]);
+  });
 });
 
 describe("beforeYourPickSummary", () => {
@@ -439,6 +462,26 @@ describe("recommend", () => {
       }),
     );
     expect(recs.every((rec) => rec.player.playerId !== "taken")).toBe(true);
+  });
+
+  it("uses mock-draft draft_slot picks when scoring roster need", () => {
+    const recs = recommend(
+      input({
+        rosterPositions: ["RB", "RB", "BN"],
+        players: {
+          mine1: player("mine1", "RB", 4),
+          mine2: player("mine2", "RB", 5),
+          other: player("other", "RB", 6),
+        },
+        picks: [
+          { ...pick("mine1", 1, 1), roster_id: null, draft_slot: 1 },
+          { ...pick("mine2", 1, 13), roster_id: null, draft_slot: 1 },
+        ],
+        pickNo: 14,
+      }),
+    );
+    expect(recs[0]?.player.playerId).toBe("other");
+    expect(recs[0]?.reasons).not.toContain("Fills a starter hole");
   });
 
   it("suppresses K and DEF before the last two rounds", () => {

@@ -196,6 +196,17 @@ describe("resolveUserSlot", () => {
     ).toEqual({ slot: 1, rosterId: 1 });
   });
 
+  it("maps a mock pick with a null roster_id through draft_slot", () => {
+    expect(
+      resolveUserSlot(
+        self,
+        draft({ draft_order: null, slot_to_roster_id: { "1": 1, "2": 2 } }),
+        [],
+        [pick("rb1", 1, 1, { picked_by: "u1", draft_slot: 1, roster_id: null })],
+      ),
+    ).toEqual({ slot: 1, rosterId: 1 });
+  });
+
   it("returns nulls when the user is not in the draft", () => {
     expect(
       resolveUserSlot(
@@ -230,6 +241,23 @@ describe("displayNameFor and resolvePickManager", () => {
       resolvePickManager(pick("wr1", 1, 2, { picked_by: "" }), opts),
     ).toMatchObject({ isYou: true, displayName: "Brian" });
     expect(resolvePickManager(pick("te1", 2, 3, { picked_by: "u2" }), opts).isYou).toBe(false);
+  });
+
+  it("marks mock CPU picks on your slot as yours when roster_id is null", () => {
+    const opts = {
+      user: self,
+      users,
+      rosters: [] as SleeperRoster[],
+      slotToUser: { 1: "u1" },
+      userRosterId: 1,
+      slotToRoster: { "1": 1, "2": 2 },
+    };
+    expect(
+      resolvePickManager(
+        pick("rb1", 1, 1, { picked_by: "", roster_id: null, draft_slot: 1 }),
+        opts,
+      ),
+    ).toMatchObject({ isYou: true, displayName: "Brian" });
   });
 });
 
@@ -349,6 +377,21 @@ describe("buildLiveState", () => {
     const state = await buildLiveState("d1", "brian");
     expect(state.leagueName).toBe("Home League");
     expect(state.recommendations.length).toBeGreaterThan(0);
+  });
+
+  it("fills the roster from mock-draft picks that omit roster_id", async () => {
+    vi.mocked(getDraft).mockResolvedValue(
+      draft({ league_id: null, metadata: { scoring_type: "std", name: "Mock" } }),
+    );
+    vi.mocked(getDraftPicks).mockResolvedValue([
+      pick("rb1", 1, 1, { picked_by: "u1", roster_id: null, draft_slot: 1 }),
+      pick("wr1", 2, 2, { picked_by: "", roster_id: null, draft_slot: 2 }),
+    ]);
+    const state = await buildLiveState("d1", "brian");
+    expect(state.roster.find((slot) => slot.slot === "RB")?.player?.playerId).toBe("rb1");
+    expect(state.roster.find((slot) => slot.slot === "WR")?.player).toBeNull();
+    expect(state.recentPicks.find((entry) => entry.pickNo === 1)?.isYou).toBe(true);
+    expect(state.recommendations.every((rec) => rec.player.playerId !== "rb1")).toBe(true);
   });
 
   it("hides recommendations when the user is not seated and still lists recent picks", async () => {
