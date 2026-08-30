@@ -75,7 +75,16 @@ function liveState(overrides: Partial<LiveState> = {}): LiveState {
       nextUserPickNo: 27,
     },
     roster: [
-      { slot: "QB", player: playerView({ playerId: "qb1", name: "Jalen Hurts", position: "QB", team: "PHI" }) },
+      {
+        slot: "QB",
+        player: playerView({
+          playerId: "qb1",
+          name: "Jalen Hurts",
+          position: "QB",
+          team: "PHI",
+          injuryStatus: "Questionable",
+        }),
+      },
       { slot: "RB", player: null },
     ],
     recommendations: [
@@ -163,6 +172,7 @@ function liveState(overrides: Partial<LiveState> = {}): LiveState {
         depth: null,
         rookie: false,
         yearsExp: null,
+        injuryStatus: "Out",
       }),
     ],
     ...overrides,
@@ -198,6 +208,8 @@ describe("LiveRoom", () => {
     );
     expect(screen.getByText("you")).toBeInTheDocument();
     expect(screen.getByText("Empty")).toBeInTheDocument();
+    expect(screen.getByText(/Jalen Hurts/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Questionable/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Headlines from/)).toBeInTheDocument();
     vi.unstubAllGlobals();
   });

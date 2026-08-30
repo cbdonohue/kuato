@@ -224,4 +224,36 @@ describe("runAiAction", () => {
       runAiAction("board", "brian", { action: "board" }),
     ).resolves.toMatchObject({ title: "Sleepers & fades", note: "ok" });
   });
+
+  it("returns an injury stub when nobody is flagged and asks the model when they are", async () => {
+    await expect(
+      runAiAction("inj-empty", "brian", { action: "injury" }),
+    ).resolves.toEqual({
+      title: "Injury analysis",
+      note: "Nobody on your roster or the remaining ADP board has an injury flag. If a name is dinged up, Sleeper has not marked them yet.",
+    });
+    expect(completeLlm).not.toHaveBeenCalled();
+
+    vi.mocked(completeLlm).mockResolvedValue("Fade CMC until he is practicing.");
+    vi.mocked(buildLiveState).mockResolvedValue(
+      sampleState({
+        available: [
+          player("rb2", {
+            name: "Christian McCaffrey",
+            position: "RB",
+            injuryStatus: "IR",
+            injuryBodyPart: "Achilles",
+          }),
+        ],
+      }),
+    );
+    await expect(
+      runAiAction("inj-ok", "brian", { action: "injury" }),
+    ).resolves.toEqual({
+      title: "Injury analysis",
+      note: "Fade CMC until he is practicing.",
+    });
+    expect(completeLlm).toHaveBeenCalledOnce();
+    expect(vi.mocked(completeLlm).mock.calls[0][0].prompt).toContain("Christian McCaffrey");
+  });
 });

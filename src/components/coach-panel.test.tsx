@@ -123,6 +123,7 @@ describe("CoachPanel", () => {
 
     expect(screen.getByText("Fill TE before the run on them.")).toBeInTheDocument();
     expect(screen.getByText("On")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Injury analysis" })).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: "Review roster" }));
     expect(await screen.findByText("Take Kelce now.")).toBeInTheDocument();
@@ -144,6 +145,19 @@ describe("CoachPanel", () => {
     });
     await user.click(screen.getByRole("button", { name: "Sleepers & fades" }));
     expect(await screen.findByText("Fade the kicker.")).toBeInTheDocument();
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        title: "Injury analysis",
+        note: "Bijan is a game-time decision.",
+      }),
+    });
+    await user.click(screen.getByRole("button", { name: "Injury analysis" }));
+    expect(await screen.findByText("Bijan is a game-time decision.")).toBeInTheDocument();
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({
+      action: "injury",
+    });
 
     fetchMock.mockResolvedValueOnce({
       ok: true,

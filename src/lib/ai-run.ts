@@ -1,7 +1,9 @@
 import {
   actionTitle,
   buildAiPrompt,
+  EMPTY_INJURY_NOTE,
   findPlayer,
+  hasInjuryFlags,
   tokenBudget,
   type AiRequest,
   type AiResult,
@@ -62,6 +64,13 @@ export async function runAiAction(
     return {
       title,
       note: "No rec headlines are loaded yet. News appears once there are top-5 recommendations.",
+    };
+  }
+
+  if (request.action === "injury" && !hasInjuryFlags(state)) {
+    return {
+      title,
+      note: EMPTY_INJURY_NOTE,
     };
   }
 

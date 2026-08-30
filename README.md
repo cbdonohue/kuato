@@ -21,7 +21,7 @@ Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localh
 
 ## Live room
 
-Recommendations show FFC ADP (PPR / half-PPR / standard, or 2QB when the league is Superflex), bye week, injury, depth chart, and last-season nflverse stats. The top-5 score uses those same signals — last-season points, snap share, depth-chart role, ADP spread, and bye-week clusters — not just ADP vs pick. Reasons call out starter holes, demand from the next managers, the last player before an ADP gap, stacks, injury notes, production, snaps, and stacked byes. A news strip above the board shows a few recent stories for those recs. With an API key you can ask the coach, scout a remaining player, compare two names, review the roster, or get a news / sleepers read.
+Recommendations show FFC ADP (PPR / half-PPR / standard, or 2QB when the league is Superflex), bye week, injury, depth chart, and last-season nflverse stats. The top-5 score uses those same signals — last-season points, snap share, depth-chart role, ADP spread, and bye-week clusters — not just ADP vs pick. Reasons call out starter holes, demand from the next managers, the last player before an ADP gap, stacks, injury notes, production, snaps, and stacked byes. A news strip above the board shows a few recent stories for those recs. With an API key you can ask the coach, scout a remaining player, compare two names, review the roster, or get a news / sleepers / injury read.
 
 The remaining board lists ADP, name, bye, and last-season points. Filter by position or search a name:
 
@@ -47,7 +47,7 @@ When a key is set, the live room adds:
 - **Scout** — a fit / risk / take-now note for any remaining player
 - **Compare** — head-to-head for two players on this roster
 - **Review roster** — holes, bye clusters, and the next-pick plan
-- **News briefing** and **Sleepers & fades** from the current recs and remaining ADP board
+- **News briefing**, **Sleepers & fades**, and **Injury analysis** from the current recs, remaining ADP board, and Sleeper injury flags
 
 ## Tests
 
