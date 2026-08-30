@@ -41,6 +41,10 @@ describe("login", () => {
       error: "Wrong password.",
     });
     expect(createSession).not.toHaveBeenCalled();
+
+    await expect(login(undefined, new FormData())).resolves.toEqual({
+      error: "Wrong password.",
+    });
   });
 
   it("creates a session and redirects home", async () => {

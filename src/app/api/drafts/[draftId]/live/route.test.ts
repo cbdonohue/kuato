@@ -64,5 +64,13 @@ describe("GET /api/drafts/[draftId]/live", () => {
     );
     expect(failed.status).toBe(502);
     expect(await failed.json()).toEqual({ error: "upstream" });
+
+    vi.mocked(buildLiveState).mockRejectedValueOnce("boom");
+    const unknown = await GET(
+      new NextRequest("http://localhost/api/drafts/d1/live?username=brian"),
+      { params: Promise.resolve({ draftId: "d1" }) },
+    );
+    expect(unknown.status).toBe(502);
+    expect(await unknown.json()).toEqual({ error: "Failed to load draft" });
   });
 });

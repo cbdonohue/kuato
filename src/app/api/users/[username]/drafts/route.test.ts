@@ -105,5 +105,40 @@ describe("GET /api/users/[username]/drafts", () => {
     });
     expect(failed.status).toBe(502);
     expect(await failed.json()).toEqual({ error: "timeout" });
+
+    vi.mocked(getUser).mockRejectedValueOnce("boom");
+    const unknown = await GET(new NextRequest("http://localhost/api/users/brian/drafts"), {
+      params: Promise.resolve({ username: "brian" }),
+    });
+    expect(unknown.status).toBe(502);
+    expect(await unknown.json()).toEqual({ error: "Failed to load drafts" });
+  });
+
+  it("falls back to a draft id name when metadata is missing", async () => {
+    vi.mocked(getUser).mockResolvedValue({
+      user_id: "u1",
+      username: "brian",
+      display_name: "Brian",
+      avatar: null,
+    });
+    vi.mocked(getNflState).mockResolvedValue({ season: "2026" });
+    vi.mocked(getUserDrafts).mockResolvedValue([
+      {
+        draft_id: "d9",
+        league_id: null,
+        type: "snake",
+        status: "pre_draft",
+        sport: "nfl",
+        season: "2026",
+        start_time: null,
+        settings: { teams: 10, rounds: 15 },
+        metadata: null,
+      },
+    ]);
+    const res = await GET(new NextRequest("http://localhost/api/users/brian/drafts"), {
+      params: Promise.resolve({ username: "brian" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).drafts[0].name).toBe("Draft d9");
   });
 });
