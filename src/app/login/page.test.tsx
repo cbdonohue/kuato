@@ -10,6 +10,7 @@ describe("Login page", () => {
   it("renders the sign-in heading", () => {
     render(<LoginPage />);
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByText("Kuato")).toBeInTheDocument();
     expect(screen.getByLabelText("sign-in")).toBeInTheDocument();
   });
 });
