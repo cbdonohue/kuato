@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- README lists the live room, scoring inputs, and every coach action (Ask, Scout, Compare, Review roster, News briefing, Sleepers & fades, Injury analysis)
 - README uses an animated WebP walkthrough (GitHub will not play a repo-hosted `<video>`)
 
 ### Fixed
