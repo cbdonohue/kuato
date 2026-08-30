@@ -10,7 +10,11 @@ Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynas
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js 20+](https://img.shields.io/badge/node-20%2B-green.svg)](https://nodejs.org)
 
-![Live draft room with top-5 recommendations, roster holes, and remaining board](docs/live-room.png)
+Live mock-draft room: top-5 board, news strip, Ask / Scout / Compare / roster review / news briefing / sleepers & fades, remaining-board search and filters, and live pick updates.
+
+<video src="docs/live-room.mp4" poster="docs/live-room.png" controls muted playsinline width="100%">
+  <a href="docs/live-room.mp4">Live mock draft with all features</a>
+</video>
 
 ## Features
 
@@ -29,7 +33,7 @@ Sign in with the shared site password, then pick **Your drafts** or **Mock draft
 
 ![Username lookup with a pre-draft league](docs/drafts.png)
 
-The remaining board lists ADP, name, bye, and last-season points:
+The remaining board lists ADP, name, bye, and last-season points. The video at the top walks the live room; this loop is just the filter:
 
 ![Filtering the remaining board to a WR search](docs/live-room.gif)
 
