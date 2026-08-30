@@ -15,7 +15,7 @@ export default async function Home({
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-10 sm:py-16">
       <AppNav />
-      <header className="mb-10 max-w-2xl">
+      <header className="mx-auto mb-10 flex max-w-2xl flex-col items-center text-center">
         <BrandMark size={96} className="mb-5" />
         <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-accent">
           Live redraft
