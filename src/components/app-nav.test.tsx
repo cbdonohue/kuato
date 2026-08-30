@@ -9,7 +9,7 @@ vi.mock("@/app/login/actions", () => ({
 describe("AppNav", () => {
   it("links home and offers sign out", () => {
     render(<AppNav />);
-    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Kuato" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 });

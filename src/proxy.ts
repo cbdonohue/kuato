@@ -2,8 +2,20 @@ import { isValidSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const PUBLIC_FILES = new Set([
+  "/apple-icon.png",
+  "/favicon.ico",
+  "/icon.png",
+  "/kuato.png",
+  "/opengraph-image.png",
+]);
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (PUBLIC_FILES.has(pathname)) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const signedIn = isValidSessionToken(token);
 
@@ -27,6 +39,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|opengraph-image.png|kuato.png|sitemap.xml|robots.txt).*)",
   ],
 };

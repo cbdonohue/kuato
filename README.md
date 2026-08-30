@@ -1,31 +1,77 @@
-# Sleeper Draft Assistant
+# Kuato
 
-Password-gated live redraft pick recommendations for a Sleeper username. Look up your drafts, open a room, and get a top-5 board from FFC ADP vs pick number, your roster holes, who still needs the position before you pick, ADP tier cliffs, and same-team stacks.
+<img src="public/kuato.png" alt="Kuato" width="160" />
+
+Password-gated live redraft pick recommendations for a [Sleeper](https://sleeper.com) username. Look up your drafts, open a room, and get a top-5 board from Fantasy Football Calculator ADP vs pick number, your roster holes, who still needs the position before you pick, ADP tier cliffs, and same-team stacks.
 
 Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynasty leagues are unsupported.
 
+[![Test](https://github.com/cbdonohue/kuato/actions/workflows/test.yml/badge.svg)](https://github.com/cbdonohue/kuato/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js 20+](https://img.shields.io/badge/node-20%2B-green.svg)](https://nodejs.org)
+
 ![Live draft room with top-5 recommendations, roster holes, and remaining board](docs/live-room.png)
 
-## Run
+## Features
 
-```bash
-npm install
-npm run dev
-```
+- **Your drafts** — look up a Sleeper username and open any of this season's rooms
+- **Mock draft** — paste a Sleeper mock ID (the old `/debug` route redirects here)
+- **Top-5 board** — ADP vs pick, starter holes, upcoming positional demand, tier cliffs, stacks, injury, last-season production, snap share, depth-chart role, and stacked byes
+- **Remaining board** — filter by position or search a name
+- **News strip** — recent headlines for the current recs
+- **Optional AI coach** — Ask, Scout, Compare, roster review, news briefing, sleepers / fades, and injury analysis when an API key is set
 
-Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localhost:3000](http://localhost:3000), sign in, then pick **Your drafts** (Sleeper username) or **Mock draft** (paste a Sleeper mock ID). `/debug` still redirects to the mock tab.
+## Screenshots
+
+Sign in with the shared site password, then pick **Your drafts** or **Mock draft**:
 
 ![Sign-in](docs/login.png)
 
 ![Username lookup with a pre-draft league](docs/drafts.png)
 
-## Live room
-
-Recommendations show FFC ADP (PPR / half-PPR / standard, or 2QB when the league is Superflex), bye week, injury, depth chart, and last-season nflverse stats. The top-5 score uses those same signals — last-season points, snap share, depth-chart role, ADP spread, and bye-week clusters — not just ADP vs pick. Reasons call out starter holes, demand from the next managers, the last player before an ADP gap, stacks, injury notes, production, snaps, and stacked byes. A news strip above the board shows a few recent stories for those recs. With an API key you can ask the coach, scout a remaining player, compare two names, review the roster, or get a news / sleepers / injury read.
-
-The remaining board lists ADP, name, bye, and last-season points. Filter by position or search a name:
+The remaining board lists ADP, name, bye, and last-season points:
 
 ![Filtering the remaining board to a WR search](docs/live-room.gif)
+
+## Run
+
+```bash
+npm ci
+cp .env.example .env.local
+```
+
+Set `SITE_PASSWORD` in `.env.local`. Then:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), sign in, and look up a username or mock ID.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `SITE_PASSWORD` | yes | Shared password for the whole app |
+| `OPENAI_API_KEY` | no | Coach tools via OpenAI (`gpt-4o-mini`) |
+| `ANTHROPIC_API_KEY` | no | Coach tools via Anthropic if OpenAI is unset (`claude-3-5-haiku-latest`) |
+
+Without an AI key you still get the top-5 and reasons. Production is a normal Next.js host: set the same variables, run `npm run build` and `npm start`.
+
+## How the top-5 is scored
+
+Each remaining player gets a weighted total in `src/lib/recommend.ts`:
+
+| Signal | What it captures |
+| --- | --- |
+| ADP vs pick | Value relative to the current pick; wide ADP spread shrinks huge reaches |
+| Roster need | Starter holes, with Superflex treating QB as a skill seat |
+| Upcoming demand | How many of the next managers still need that position |
+| Tier cliff | Last player before an ADP gap |
+| Stack | Same-team pairing with a player already on your roster |
+| Production / snaps / depth | Last-season nflverse points, snap share, and depth-chart role |
+| Bye clusters | Penalty when the player shares a bye with your other starters |
+| Injury | Status from Sleeper |
+
+Sleeper `search_rank` is the fallback when a player has no FFC ADP. Rankings are not FantasyPros. Kickers and DST stay off the board until the last two rounds.
 
 ## Data
 
@@ -34,13 +80,11 @@ The remaining board lists ADP, name, bye, and last-season points. Filter by posi
 - [nflverse](https://github.com/nflverse) last-season stats and snap share (CC-BY 4.0)
 - [ESPN](https://www.espn.com) unofficial player news and [Google News](https://news.google.com) RSS for top-5 rec headlines (cached about 30 minutes)
 
-Sleeper `search_rank` is the fallback when a player has no FFC ADP. Rankings are not FantasyPros.
+ADP format follows the league: PPR / half-PPR / standard, or 2QB when the roster has Superflex.
 
 ## Optional AI coach
 
-Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. Without a key, you still get the top-5 and reasons.
-
-When a key is set, the live room adds:
+When `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set, the live room adds:
 
 - A 2–3 sentence pick note when you are on the clock or within two picks
 - **Ask** — freeform questions about this board, with suggested prompts from your holes
@@ -53,7 +97,23 @@ When a key is set, the live room adds:
 
 ```bash
 npm test
+npm run lint
+npm run typecheck
 npm run test:coverage
 ```
 
-Coverage must stay at 80% or higher (statements, branches, functions, and lines).
+Coverage must stay at 80% or higher (statements, branches, functions, and lines). CI runs lint, typecheck, and coverage on every pull request to `master`.
+
+## Docs
+
+- [Contributing](CONTRIBUTING.md)
+- [Architecture](docs/architecture.md)
+- [Security](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Changelog](CHANGELOG.md)
+
+## License
+
+[MIT](LICENSE)
+
+Not affiliated with Sleeper, Fantasy Football Calculator, nflverse, ESPN, OpenAI, or Anthropic. Recommendations are decision support, not a guarantee.

@@ -1,5 +1,5 @@
 {
-  "name": "Sleeper Draft Assistant",
+  "name": "Kuato",
   "install": "npm ci",
   "terminals": [
     {
