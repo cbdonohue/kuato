@@ -60,6 +60,29 @@ describe("scoring helpers", () => {
   it("builds a receiving line", () => {
     expect(statLineFor(season)).toBe("90 rec, 1200 yds, 8 TD");
   });
+
+  it("builds QB, RB, and kicker lines", () => {
+    expect(
+      statLineFor({
+        ...season,
+        position: "QB",
+        passingYards: 4300.4,
+        passingTds: 32,
+        interceptions: 9,
+      }),
+    ).toBe("4300 yds, 32 TD, 9 INT");
+    expect(
+      statLineFor({
+        ...season,
+        position: "RB",
+        rushingYards: 1100.6,
+        rushingTds: 12,
+        receptions: 40,
+        receivingTds: 2,
+      }),
+    ).toBe("1101 rush, 40 rec, 14 TD");
+    expect(statLineFor({ ...season, position: "K", games: 16 })).toBe("16 g");
+  });
 });
 
 describe("buildEnrichmentIndex", () => {
