@@ -64,7 +64,7 @@ Coverage must stay at 80% or higher for statements, branches, functions, and lin
 | `src/components/` | Live room, home lookup, coach panel |
 | `src/lib/` | Sleeper, ADP, nflverse, scoring, AI, auth |
 | `src/proxy.ts` | Session gate for pages and `/api/*` |
-| `docs/` | README walkthrough and architecture notes |
+| `docs/` | README walkthrough, architecture, and deploy notes |
 | `.cursor/rules/` | Cursor project rules for agents (`.mdc`) |
 
 Recommendation scoring lives in `src/lib/recommend.ts`. Live draft assembly is `src/lib/live.ts`. See [docs/architecture.md](docs/architecture.md) for the data flow.

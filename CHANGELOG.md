@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Deploy notes under `docs/deploy.md`
+- `AI_MODEL` override for the coach (documented in `.env.example` and honored in `src/lib/llm.ts`)
+
+### Removed
+
+- Unused Next.js starter SVGs from `public/`
+
+## [0.1.1] - 2026-08-30
+
+### Added
+
 - Cursor project rules under `.cursor/rules` for agents working in this repo
 - "Open in GitHub Codespaces" badge and a Node 20 `.devcontainer` that installs, starts `npm run dev`, and forwards port 3000
 - Server Actions login through the Codespaces forwarded host (`*.app.github.dev` vs `localhost:3000`)

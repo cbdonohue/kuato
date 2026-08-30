@@ -45,7 +45,7 @@ Kickers and team defenses are held until the last two rounds. Players ranked wor
 
 ## AI tools
 
-`POST /api/drafts/:draftId/ai?username=` is a no-op 503 until `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. The body is `{ action, question?, playerId?, playerIds? }` with actions `ask`, `scout`, `compare`, `review`, `briefing`, `board`, and `injury`. Prompts are built in `src/lib/ai.ts` from the same live snapshot; `src/lib/llm.ts` calls OpenAI first when both keys exist.
+`POST /api/drafts/:draftId/ai?username=` is a no-op 503 until `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. The body is `{ action, question?, playerId?, playerIds? }` with actions `ask`, `scout`, `compare`, `review`, `briefing`, `board`, and `injury`. Prompts are built in `src/lib/ai.ts` from the same live snapshot; `src/lib/llm.ts` calls OpenAI first when both keys exist. `AI_MODEL` overrides the default id (`gpt-4o-mini` or `claude-3-5-haiku-latest`).
 
 ## Caching
 

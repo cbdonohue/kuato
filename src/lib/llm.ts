@@ -1,5 +1,14 @@
+export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+export const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest";
+
 export function hasLlmKey(): boolean {
   return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+}
+
+export function resolveLlmModel(provider: "openai" | "anthropic"): string {
+  const override = process.env.AI_MODEL?.trim();
+  if (override) return override;
+  return provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_ANTHROPIC_MODEL;
 }
 
 export type LlmOptions = {
@@ -27,7 +36,7 @@ async function callOpenAi(opts: LlmOptions): Promise<string | null> {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: resolveLlmModel("openai"),
         temperature: opts.temperature ?? 0.4,
         max_tokens: opts.maxTokens ?? 180,
         messages: [{ role: "user", content: opts.prompt }],
@@ -58,7 +67,7 @@ async function callAnthropic(opts: LlmOptions): Promise<string | null> {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-5-haiku-latest",
+        model: resolveLlmModel("anthropic"),
         max_tokens: opts.maxTokens ?? 180,
         temperature: opts.temperature ?? 0.4,
         messages: [{ role: "user", content: opts.prompt }],
