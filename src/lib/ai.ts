@@ -1,4 +1,5 @@
 import { rosterHoleLabels } from "./coach";
+import { injuryReason } from "./recommend";
 import type { LiveState, PlayerView } from "./types";
 
 export const AI_ACTIONS = [
@@ -8,6 +9,7 @@ export const AI_ACTIONS = [
   "review",
   "briefing",
   "board",
+  "injury",
 ] as const;
 
 export type AiAction = (typeof AI_ACTIONS)[number];
@@ -38,7 +40,8 @@ export function parseAiRequest(
   if (typeof action !== "string" || !ACTION_SET.has(action)) {
     return {
       ok: false,
-      error: "action must be ask, scout, compare, review, briefing, or board",
+      error:
+        "action must be ask, scout, compare, review, briefing, board, or injury",
     };
   }
   const question =
@@ -87,6 +90,9 @@ export function suggestedQuestions(state: LiveState): string[] {
   if (state.stories.length > 0) {
     questions.push("Does any news change this pick?");
   }
+  if (hasInjuryFlags(state)) {
+    questions.push("Does any injury change this pick?");
+  }
   if (holes.has("QB") || state.draft.isSuperflex) {
     questions.push("When should I take a QB?");
   }
@@ -101,7 +107,9 @@ export function formatPlayerLine(player: PlayerView): string {
     ? ` LY ${player.lastSeason.fantasyPts} pts/${player.lastSeason.games}g`
     : "";
   const bye = player.byeWeek != null ? ` bye ${player.byeWeek}` : "";
-  const inj = player.injuryStatus ? ` ${player.injuryStatus}` : "";
+  const inj = player.injuryStatus
+    ? ` ${[player.injuryStatus, player.injuryBodyPart].filter(Boolean).join("/")}`
+    : "";
   const depth = player.depth ? ` ${player.depth}` : "";
   const rookie = player.rookie ? " rookie" : "";
   return `${player.name} (${player.position} ${player.team}) ${adp}${ly}${bye}${inj}${depth}${rookie}`;
@@ -122,6 +130,71 @@ export function byeClusters(roster: LiveState["roster"]): string[] {
     .map(([week, names]) => `week ${week}: ${names.join(", ")}`);
 }
 
+export function injuryLabel(player: PlayerView): string | null {
+  return injuryReason(player) ?? player.injuryStatus?.trim() ?? null;
+}
+
+export function injuredPlayers(state: LiveState): {
+  roster: PlayerView[];
+  remaining: PlayerView[];
+} {
+  const roster: PlayerView[] = [];
+  const seen = new Set<string>();
+  for (const slot of state.roster) {
+    const player = slot.player;
+    if (!player || !injuryLabel(player) || seen.has(player.playerId)) continue;
+    seen.add(player.playerId);
+    roster.push(player);
+  }
+  const remaining: PlayerView[] = [];
+  for (const player of [
+    ...state.recommendations.map((rec) => rec.player),
+    ...state.available,
+  ]) {
+    if (!injuryLabel(player) || seen.has(player.playerId)) continue;
+    seen.add(player.playerId);
+    remaining.push(player);
+  }
+  remaining.sort((a, b) => (a.adp ?? a.rank) - (b.adp ?? b.rank));
+  return { roster, remaining };
+}
+
+export function hasInjuryFlags(state: LiveState): boolean {
+  const watch = injuredPlayers(state);
+  return watch.roster.length > 0 || watch.remaining.length > 0;
+}
+
+export const EMPTY_INJURY_NOTE =
+  "Nobody on your roster or the remaining ADP board has an injury flag. If a name is dinged up, Sleeper has not marked them yet.";
+
+function formatInjuryLine(player: PlayerView): string {
+  const adp = player.adp != null ? `ADP ${player.adp}` : `rank ${player.rank}`;
+  const detail = injuryLabel(player) ?? "no flag";
+  const depth = player.depth ? ` ${player.depth}` : "";
+  return `${player.name} (${player.position} ${player.team}) ${adp} ${detail}${depth}`;
+}
+
+function injuryContext(state: LiveState): string {
+  const { roster, remaining } = injuredPlayers(state);
+  const injuredIds = new Set(
+    [...roster, ...remaining].map((player) => player.playerId),
+  );
+  const news = state.stories
+    .filter((story) => injuredIds.has(story.playerId))
+    .map((story) => `${story.playerName}: ${story.headline}`);
+  return [
+    roster.length
+      ? `Roster injuries:\n${roster.map(formatInjuryLine).join("\n")}`
+      : "Roster injuries: none flagged.",
+    remaining.length
+      ? `Remaining with injury flags:\n${remaining.slice(0, 20).map(formatInjuryLine).join("\n")}`
+      : "Remaining injury flags: none.",
+    news.length ? `Injury headlines:\n${news.join("\n")}` : "",
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
 export function findPlayer(state: LiveState, playerId: string): PlayerView | null {
   for (const rec of state.recommendations) {
     if (rec.player.playerId === playerId) return rec.player;
@@ -138,7 +211,11 @@ export function findPlayer(state: LiveState, playerId: string): PlayerView | nul
   return null;
 }
 
-export function draftContext(state: LiveState, boardLimit = 20): string {
+export function draftContext(
+  state: LiveState,
+  boardLimit = 20,
+  includeNews = true,
+): string {
   const holes = rosterHoleLabels(state.roster);
   const when =
     state.clock.picksUntilUser === 0
@@ -164,9 +241,11 @@ export function draftContext(state: LiveState, boardLimit = 20): string {
   const board = state.available
     .slice(0, boardLimit)
     .map((player) => formatPlayerLine(player));
-  const news = state.stories
-    .slice(0, 6)
-    .map((story) => `${story.playerName}: ${story.headline}`);
+  const news = includeNews
+    ? state.stories
+        .slice(0, 6)
+        .map((story) => `${story.playerName}: ${story.headline}`)
+    : [];
   const byes = byeClusters(state.roster);
 
   return [
@@ -194,6 +273,7 @@ export function actionTitle(request: AiRequest, state: LiveState): string {
   if (request.action === "review") return "Roster review";
   if (request.action === "briefing") return "News briefing";
   if (request.action === "board") return "Sleepers & fades";
+  if (request.action === "injury") return "Injury analysis";
   if (request.action === "scout") {
     const player = request.playerId ? findPlayer(state, request.playerId) : null;
     return player ? `Scout · ${player.name}` : "Scout";
@@ -212,7 +292,8 @@ export function buildAiPrompt(request: AiRequest, state: LiveState): string {
     "You are a concise fantasy football draft coach for a redraft league. Use only the draft context. No preamble, no markdown, no bullet lists unless asked.";
   const context = draftContext(
     state,
-    request.action === "board" ? 40 : 20,
+    request.action === "board" || request.action === "injury" ? 40 : 20,
+    request.action !== "injury",
   );
 
   if (request.action === "ask") {
@@ -265,6 +346,15 @@ export function buildAiPrompt(request: AiRequest, state: LiveState): string {
     ].join("\n\n");
   }
 
+  if (request.action === "injury") {
+    return [
+      header,
+      context,
+      injuryContext(state),
+      "Using the injury flags, say what matters for this roster and the next pick in 3-4 sentences. Cover who is actually at risk, who to fade or wait on, and any replacement or handcuff on the board. Ignore healthy noise.",
+    ].join("\n\n");
+  }
+
   return [
     header,
     context,
@@ -273,7 +363,7 @@ export function buildAiPrompt(request: AiRequest, state: LiveState): string {
 }
 
 export function tokenBudget(action: AiAction): number {
-  if (action === "review" || action === "board") return 260;
+  if (action === "review" || action === "board" || action === "injury") return 260;
   if (action === "ask" || action === "compare") return 220;
   return 180;
 }

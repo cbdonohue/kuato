@@ -14,7 +14,14 @@ import {
 
 export type AiTrigger = {
   nonce: number;
-  action: "ask" | "scout" | "compare" | "review" | "briefing" | "board";
+  action:
+    | "ask"
+    | "scout"
+    | "compare"
+    | "review"
+    | "briefing"
+    | "board"
+    | "injury";
   question?: string;
   playerId?: string;
   playerIds?: string[];
@@ -118,8 +125,8 @@ export function CoachPanel({
       <div className="rounded-xl border border-panel-border bg-panel px-4 py-3 text-sm text-muted">
         Add <span className="font-mono text-foreground">OPENAI_API_KEY</span> or{" "}
         <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span> to
-        unlock Ask, Scout, Compare, roster review, and a news briefing. The
-        top-5 board still works without a key.
+        unlock Ask, Scout, Compare, roster review, a news briefing, and injury
+        analysis. The top-5 board still works without a key.
       </div>
     );
   }
@@ -157,6 +164,12 @@ export function CoachPanel({
           onClick={() => void run({ nonce: Date.now(), action: "board" })}
         >
           Sleepers & fades
+        </CoachButton>
+        <CoachButton
+          disabled={busy}
+          onClick={() => void run({ nonce: Date.now(), action: "injury" })}
+        >
+          Injury analysis
         </CoachButton>
         <CoachButton
           disabled={busy}

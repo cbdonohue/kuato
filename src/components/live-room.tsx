@@ -390,6 +390,12 @@ export function LiveRoom({
                     <span className="flex-1 text-sm">
                       {entry.player.name}{" "}
                       <span className="text-muted">{entry.player.team}</span>
+                      {entry.player.injuryStatus ? (
+                        <span className="text-rose-300">
+                          {" "}
+                          · {entry.player.injuryStatus}
+                        </span>
+                      ) : null}
                     </span>
                   ) : (
                     <span className="flex-1 text-sm text-muted">Empty</span>
@@ -551,9 +557,13 @@ function AvailableList({
               {player.name}{" "}
               <span className="text-muted">{player.team}</span>
             </span>
-            {player.depth || player.rookie ? (
+            {player.depth || player.rookie || player.injuryStatus ? (
               <span className="block text-[11px] text-muted">
-                {[player.depth, player.rookie ? "Rookie" : null]
+                {[
+                  player.depth,
+                  player.rookie ? "Rookie" : null,
+                  player.injuryStatus,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </span>

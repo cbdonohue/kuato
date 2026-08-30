@@ -5,7 +5,7 @@
     {
       "name": "next-dev",
       "command": "npm run dev",
-      "description": "Next.js 16 dev server on http://localhost:3000. Set the SITE_PASSWORD secret to sign in; optional OPENAI_API_KEY/ANTHROPIC_API_KEY enable Ask, Scout, Compare, roster review, and the on-the-clock coach note."
+      "description": "Next.js 16 dev server on http://localhost:3000. Set the SITE_PASSWORD secret to sign in; optional OPENAI_API_KEY/ANTHROPIC_API_KEY enable Ask, Scout, Compare, roster review, injury analysis, and the on-the-clock coach note."
     }
   ],
   "ports": [

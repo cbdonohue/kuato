@@ -19,7 +19,7 @@ Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynas
 - **Top-5 board** — ADP vs pick, starter holes, upcoming positional demand, tier cliffs, stacks, injury, last-season production, snap share, depth-chart role, and stacked byes
 - **Remaining board** — filter by position or search a name
 - **News strip** — recent headlines for the current recs
-- **Optional AI coach** — Ask, Scout, Compare, roster review, news briefing, and sleepers / fades when an API key is set
+- **Optional AI coach** — Ask, Scout, Compare, roster review, news briefing, sleepers / fades, and injury analysis when an API key is set
 
 ## Screenshots
 
@@ -91,7 +91,7 @@ When `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set, the live room adds:
 - **Scout** — a fit / risk / take-now note for any remaining player
 - **Compare** — head-to-head for two players on this roster
 - **Review roster** — holes, bye clusters, and the next-pick plan
-- **News briefing** and **Sleepers & fades** from the current recs and remaining ADP board
+- **News briefing**, **Sleepers & fades**, and **Injury analysis** from the current recs, remaining ADP board, and Sleeper injury flags
 
 ## Tests
 

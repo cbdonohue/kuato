@@ -4,8 +4,12 @@ import {
   buildAiPrompt,
   byeClusters,
   draftContext,
+  EMPTY_INJURY_NOTE,
   findPlayer,
   formatPlayerLine,
+  hasInjuryFlags,
+  injuredPlayers,
+  injuryLabel,
   parseAiRequest,
   suggestedQuestions,
   tokenBudget,
@@ -167,13 +171,17 @@ describe("parseAiRequest", () => {
     });
   });
 
-  it("accepts review, briefing, and board with no extras", () => {
+  it("accepts review, briefing, board, and injury with no extras", () => {
     expect(parseAiRequest({ action: "review" })).toEqual({
       ok: true,
       value: { action: "review" },
     });
     expect(parseAiRequest({ action: "briefing" }).ok).toBe(true);
     expect(parseAiRequest({ action: "board" }).ok).toBe(true);
+    expect(parseAiRequest({ action: "injury" })).toEqual({
+      ok: true,
+      value: { action: "injury" },
+    });
   });
 });
 
@@ -224,6 +232,26 @@ describe("suggestedQuestions", () => {
     );
     expect(wrOnly).toContain("Should I keep stacking WRs?");
   });
+
+  it("asks about injuries when someone is flagged", () => {
+    const questions = suggestedQuestions(
+      sampleState({
+        roster: [
+          {
+            slot: "RB",
+            player: player("rb1", {
+              name: "Bijan Robinson",
+              position: "RB",
+              injuryStatus: "Questionable",
+              injuryBodyPart: "hamstring",
+            }),
+          },
+        ],
+        stories: [],
+      }),
+    );
+    expect(questions).toContain("Does any injury change this pick?");
+  });
 });
 
 describe("draft helpers", () => {
@@ -233,13 +261,18 @@ describe("draft helpers", () => {
     expect(bijan).toBeTruthy();
     expect(formatPlayerLine(bijan!)).toContain("Bijan Robinson");
     expect(formatPlayerLine(bijan!)).toContain("ADP 4");
-    const unranked = player("x", { name: "Unknown", injuryStatus: "Q", rookie: true });
+    const unranked = player("x", {
+      name: "Unknown",
+      injuryStatus: "Q",
+      injuryBodyPart: "ankle",
+      rookie: true,
+    });
     unranked.adp = null;
     unranked.lastSeason = null;
     unranked.byeWeek = null;
     unranked.depth = null;
     expect(formatPlayerLine(unranked)).toContain("rank 20");
-    expect(formatPlayerLine(unranked)).toContain("Q");
+    expect(formatPlayerLine(unranked)).toContain("Q/ankle");
     expect(formatPlayerLine(unranked)).toContain("rookie");
     expect(findPlayer(state, "te1")?.name).toBe("Travis Kelce");
     expect(findPlayer(state, "missing")).toBeNull();
@@ -289,6 +322,9 @@ describe("draft helpers", () => {
     expect(context).toContain("Travis Kelce");
     expect(context).toContain("Kelce expected to play week 1");
     expect(context).toContain("The manager picks in 2 selection(s).");
+    expect(draftContext(sampleState(), 20, false)).not.toContain(
+      "Kelce expected to play week 1",
+    );
     expect(
       draftContext(
         sampleState({
@@ -339,6 +375,7 @@ describe("buildAiPrompt", () => {
     expect(actionTitle({ action: "review" }, state)).toBe("Roster review");
     expect(actionTitle({ action: "briefing" }, state)).toBe("News briefing");
     expect(actionTitle({ action: "board" }, state)).toBe("Sleepers & fades");
+    expect(actionTitle({ action: "injury" }, state)).toBe("Injury analysis");
     expect(actionTitle({ action: "ask", question: "hi" }, state)).toBe("Ask");
     expect(
       actionTitle({ action: "unknown" as never }, state),
@@ -362,7 +399,110 @@ describe("buildAiPrompt", () => {
     const board = buildAiPrompt({ action: "board" }, state);
     expect(board).toContain("Player 29");
     expect(tokenBudget("board")).toBe(260);
+    expect(tokenBudget("injury")).toBe(260);
     expect(tokenBudget("scout")).toBe(180);
+  });
+
+  it("builds an injury snapshot from roster, remaining, and headlines", () => {
+    const bijan = player("rb1", {
+      name: "Bijan Robinson",
+      position: "RB",
+      team: "ATL",
+      adp: 4,
+      rank: 4,
+      injuryStatus: "Questionable",
+      injuryBodyPart: "hamstring",
+      practiceParticipation: "Did Not Participate",
+    });
+    const cmc = player("rb2", {
+      name: "Christian McCaffrey",
+      position: "RB",
+      team: "SF",
+      adp: 1,
+      rank: 1,
+      injuryStatus: "IR",
+      injuryNotes: "Achilles",
+    });
+    const healthy = player("401", { name: "Ja'Marr Chase" });
+    const late = player("wr9", {
+      name: "Hurt WR",
+      position: "WR",
+      adp: 90,
+      rank: 90,
+      injuryStatus: "Out",
+    });
+    const state = sampleState({
+      roster: [
+        { slot: "RB", player: bijan },
+        { slot: "RB", player: bijan },
+        { slot: "WR", player: healthy },
+      ],
+      recommendations: [{ player: cmc, reasons: ["Falling vs ADP"] }],
+      available: [late, cmc, healthy],
+      stories: [
+        {
+          playerId: "rb1",
+          playerName: "Bijan Robinson",
+          position: "RB",
+          source: "ESPN",
+          headline: "Bijan limited with hamstring",
+          publishedAt: Date.now(),
+          age: "1h ago",
+          url: null,
+        },
+        {
+          playerId: "401",
+          playerName: "Ja'Marr Chase",
+          position: "WR",
+          source: "ESPN",
+          headline: "Chase expected to play",
+          publishedAt: Date.now(),
+          age: "2h ago",
+          url: null,
+        },
+      ],
+    });
+    expect(injuryLabel(bijan)).toBe("Questionable · hamstring · DNP");
+    expect(injuryLabel(healthy)).toBeNull();
+    expect(hasInjuryFlags(state)).toBe(true);
+    expect(injuredPlayers(state).roster.map((p) => p.name)).toEqual(["Bijan Robinson"]);
+    expect(injuredPlayers(state).remaining.map((p) => p.name)).toEqual([
+      "Christian McCaffrey",
+      "Hurt WR",
+    ]);
+
+    const prompt = buildAiPrompt({ action: "injury" }, state);
+    expect(prompt).toContain("Roster injuries:");
+    expect(prompt).toContain("Bijan Robinson");
+    expect(prompt).toContain("Questionable · hamstring · DNP");
+    expect(prompt).toContain("Remaining with injury flags:");
+    expect(prompt).toContain("Christian McCaffrey");
+    expect(prompt).toContain("Hurt WR");
+    expect(prompt).toContain("Injury headlines:");
+    expect(prompt).toContain("Bijan limited with hamstring");
+    expect(prompt).not.toContain("Chase expected to play");
+    expect(prompt).toContain("who to fade or wait on");
+    expect(EMPTY_INJURY_NOTE).toContain("injury flag");
+
+    const clean = buildAiPrompt({ action: "injury" }, sampleState());
+    expect(clean).toContain("Roster injuries: none flagged.");
+    expect(clean).toContain("Remaining injury flags: none.");
+
+    const remainingPlayer = player("late", {
+      name: "Late Hurt",
+      injuryStatus: "Out",
+    });
+    remainingPlayer.adp = null;
+    remainingPlayer.rank = 110;
+    const remainingOnly = buildAiPrompt(
+      { action: "injury" },
+      sampleState({
+        available: [remainingPlayer],
+      }),
+    );
+    expect(remainingOnly).toContain("Roster injuries: none flagged.");
+    expect(remainingOnly).toContain("Late Hurt");
+    expect(remainingOnly).toContain("rank 110");
   });
 });
 
