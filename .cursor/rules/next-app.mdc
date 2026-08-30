@@ -1,0 +1,54 @@
+---
+description: Next.js 16 App Router, proxy, pages, and API routes
+globs: src/app/**/*, src/proxy.ts, src/proxy.test.ts, src/lib/auth.ts, src/lib/session.ts, next.config.ts
+alwaysApply: false
+---
+
+# App Router and session gate
+
+## Next.js 16 conventions
+
+- Session gate is `src/proxy.ts` exporting `proxy`. Do **not** add `middleware.ts`.
+- `params` and `searchParams` are `Promise<...>` — always `await` them.
+- `cookies()` from `next/headers` is async.
+- Route handlers: `export const dynamic = "force-dynamic"`. AI route also sets `maxDuration = 30`.
+- Import with `@/` (`@/lib/auth`, `@/components/live-room`).
+- Prefer named exports. Mark client islands with `"use client"` and server actions with `"use server"`.
+- `src/app/layout.tsx` uses typed `LayoutProps<"/">`.
+
+Read `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` before changing the proxy.
+
+## Auth
+
+Shared HMAC cookie from `SITE_PASSWORD` (`src/lib/auth.ts`, `src/lib/session.ts`). There is no user table.
+
+- Unsigned pages redirect to `/login`. Unsigned `/api/*` returns JSON `{ error: "Unauthorized" }` with 401.
+- API routes call `unauthorizedResponse()` first. Keep that check.
+- Login/logout live in `src/app/login/actions.ts`. Compare passwords with `credentialsMatch` (timing-safe).
+- Cookie: `httpOnly`, `sameSite: "lax"`, `secure` in production.
+
+Do not put `SITE_PASSWORD`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` in client components.
+
+## Routes
+
+| Route | Role |
+| --- | --- |
+| `/login` | Shared password form |
+| `/` | Username lookup |
+| `/?tab=mock` | Mock draft ID |
+| `/draft/[draftId]?username=` | Live room |
+| `/debug` | Redirect to the mock tab |
+
+Keep `/debug` as a redirect. Do not revive a separate debug page.
+
+## API handlers
+
+Match `src/app/api/drafts/[draftId]/live/route.ts` and `src/app/api/drafts/[draftId]/ai/route.ts`:
+
+1. `unauthorizedResponse()` → 401
+2. Require trimmed `username` query → 400
+3. `SleeperNotFoundError` → 404
+4. Other upstream failures → 502 with `{ error: string }`
+5. AI without a model key → 503
+
+Live and AI work is `buildLiveState` / `runAiAction` — keep handlers thin. Never POST or write to `api.sleeper.app`.

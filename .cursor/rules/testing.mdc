@@ -1,0 +1,25 @@
+---
+description: Vitest, Testing Library, and coverage conventions
+globs: src/**/*.test.ts, src/**/*.test.tsx, vitest.config.mts, vitest.setup.ts
+alwaysApply: false
+---
+
+# Tests
+
+Vitest + Testing Library. Colocate `foo.test.ts` / `foo.test.tsx` next to the source. Coverage include is `src/**/*.{ts,tsx}` minus tests, `src/lib/types.ts`, and `src/app/layout.tsx`. Thresholds are 80% across statements, branches, functions, and lines (`vitest.config.mts`).
+
+## Style
+
+- `describe` / `it` / `expect` from `vitest`. Use `vi.mock` and `vi.fn` for I/O.
+- Mock `@/lib/session`, `@/lib/live`, `@/lib/llm`, and upstream clients at the module boundary. Do not hit Sleeper, FFC, nflverse, ESPN, OpenAI, or Anthropic.
+- Route tests pass `params: Promise.resolve({ ... })` and `NextRequest` URLs. See `src/app/api/drafts/[draftId]/live/route.test.ts`.
+- Component tests render through Testing Library and `user-event`. `next/link` and `next/image` are already stubbed in `vitest.setup.ts`.
+- Prefer helpers that build typed fixtures (`player()`, `liveState()`, `playerView()`) over huge inline objects. Reuse patterns in `src/lib/recommend.test.ts` and `src/components/live-room.test.tsx`.
+
+## What to cover
+
+- New branches in `recommend`, clock/roster attribution, and `detectUnsupported`.
+- API status codes: 400 / 401 / 404 / 502 / 503.
+- UI behavior: search/filter, tab switching, coach actions, empty and error states.
+
+Run `npm run test:coverage` before opening a PR that touches `src/`.

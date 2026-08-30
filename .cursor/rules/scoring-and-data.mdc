@@ -1,0 +1,55 @@
+---
+description: Recommendation scoring, live snapshot assembly, and upstream data clients
+globs: src/lib/recommend.ts, src/lib/live.ts, src/lib/enrich.ts, src/lib/types.ts, src/lib/sleeper.ts, src/lib/ffc.ts, src/lib/nflverse.ts, src/lib/news.ts, src/lib/cache.ts, src/lib/csv.ts
+alwaysApply: false
+---
+
+# Scoring and live data
+
+See `docs/architecture.md` for the request path. Types live in `src/lib/types.ts`.
+
+## `recommend()`
+
+`src/lib/recommend.ts` is the only ranking model. It returns the top five remaining players. Reasons come from the same terms as the score — do not invent a second model or let the LLM reorder the board.
+
+Inputs (keep these; do not drop one silently):
+
+- FFC ADP vs current pick (shrunk when ADP stdev is wide)
+- Starter-hole need vs league roster (QB / RB / WR / TE / FLEX / SUPER_FLEX / K / DEF)
+- Upcoming-pick demand at the same position
+- Tier cliffs (ADP gap ≥ 8)
+- Same-team QB / WR-TE stack
+- Last-season nflverse production, snap share, depth-chart rank
+- Bye-week cluster penalty
+- Sleeper injury penalty
+
+Hard rules already encoded — preserve them:
+
+- Reject `auction`. Dynasty/taxi is `detectUnsupported` / `isDynastyLeague` (league `type === 2` or `taxi_slots > 0`).
+- Superflex treats QB as a skill seat (`SUPER_FLEX`, `Q/W/R/T`, `SUPERFLEX`).
+- K and DEF stay out until the last two rounds.
+- Drop players ranked worse than 400 (except K/DEF) and inactive non-DST.
+- Sleeper mocks often omit `roster_id` — attribute picks with `pickRosterId` / `draft_slot` via `slotToRoster`.
+
+When you change a weight or term, update `reasonsFor` and the tests in `src/lib/recommend.test.ts`.
+
+## `buildLiveState()`
+
+`src/lib/live.ts` assembles one JSON snapshot: Sleeper user/draft/league/picks → reject unsupported rooms → FFC ADP → nflverse → `buildEnrichmentIndex` → `recommend()` → news → optional coach note.
+
+The live room polls this snapshot. Do not add Sleeper writes or a websocket.
+
+## Upstream clients
+
+| Module | Source | Cache |
+| --- | --- | --- |
+| `src/lib/sleeper.ts` | `https://api.sleeper.app/v1` | NFL players ~1 day on disk |
+| `src/lib/ffc.ts` | Fantasy Football Calculator ADP | `loadDayCache` |
+| `src/lib/nflverse.ts` | last-season stats + snaps | `loadDayCache` |
+| `src/lib/news.ts` | ESPN RSS | ~30 minutes |
+
+Fetch with `cache: "no-store"`. 404 from Sleeper is `SleeperNotFoundError`.
+
+`src/lib/cache.ts` stores JSON under `.cache/` (gitignored). Writes are best-effort so a read-only filesystem can still serve a previous snapshot. Do not require a successful cache write.
+
+Do not call these hosts from Vitest. Mock the client modules or `fetch`.

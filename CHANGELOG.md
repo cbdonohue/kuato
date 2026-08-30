@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cursor project rules under `.cursor/rules` for agents working in this repo
 - "Open in GitHub Codespaces" badge and a Node 20 `.devcontainer` that installs, starts `npm run dev`, and forwards port 3000
 - Server Actions login through the Codespaces forwarded host (`*.app.github.dev` vs `localhost:3000`)
 - README CI, MIT license, and Node.js 20+ badges restored next to Codespaces
