@@ -411,7 +411,8 @@ export function LiveRoom({
         >
           nflverse
         </a>
-        .
+        {" "}
+        (including historical injury-return medians, not a medical projection).
         {state.newsSources?.length ? (
           <>
             {" "}

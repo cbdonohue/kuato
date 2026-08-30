@@ -1,3 +1,8 @@
+import {
+  formatTypicalMissed,
+  lookupTypical,
+  type InjuryTable,
+} from "./injuries";
 import type {
   DraftType,
   EnrichmentIndex,
@@ -34,6 +39,7 @@ export type RecommendInput = ClockInput & {
   players: Record<string, SleeperPlayer>;
   picksUntilUser: number | null;
   extras?: EnrichmentIndex | null;
+  injuries?: InjuryTable | null;
 };
 
 export function isAuction(draftType: string): boolean {
@@ -209,10 +215,17 @@ function practiceLabel(value: string | null): string | null {
   return raw.toLowerCase();
 }
 
-export function injuryReason(player: PlayerView): string | null {
+export function injuryReason(
+  player: PlayerView,
+  injuries?: InjuryTable | null,
+): string | null {
   const status = player.injuryStatus?.trim();
   if (!status) return null;
   const part = player.injuryBodyPart?.trim();
+  const typical = lookupTypical(injuries, part);
+  if (typical) {
+    return `${typical.label} · ${formatTypicalMissed(typical)}`;
+  }
   const practice = practiceLabel(player.practiceParticipation);
   const notes = player.injuryNotes?.trim();
   const bits = [status];
@@ -587,7 +600,7 @@ export function recommend(input: RecommendInput): Recommendation[] {
         position: player.position,
         tier,
         stackName: partner?.name ?? null,
-        injury: injuryReason(player),
+        injury: injuryReason(player, input.injuries),
       }),
     };
   });

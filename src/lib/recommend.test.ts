@@ -368,6 +368,37 @@ describe("recommend", () => {
     );
     expect(recs[0].reasons).toContain("Questionable · hamstring");
   });
+
+  it("adds a typical games-missed range when the injury table hits", () => {
+    const recs = recommend(
+      input({
+        pickNo: 1,
+        players: {
+          wr1: player("wr1", "WR", 8, {
+            full_name: "Ja'Marr Chase",
+            injury_status: "Questionable",
+            injury_body_part: "hamstring",
+          }),
+        },
+        injuries: {
+          hamstring: {
+            part: "hamstring",
+            label: "Hamstring",
+            median: 3,
+            p25: 2,
+            p75: 4,
+            n: 40,
+          },
+        },
+      }),
+    );
+    expect(recs[0].reasons.some((reason) => reason.includes("typically"))).toBe(
+      true,
+    );
+    expect(recs[0].reasons).toContain(
+      "Hamstring · typically 2–4 games historically",
+    );
+  });
 });
 
 describe("toPlayerView", () => {

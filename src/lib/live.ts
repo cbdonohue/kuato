@@ -2,6 +2,7 @@ import { loadRecStories } from "./news";
 import { getCoachNote, rosterHoleLabels, shouldAskCoach } from "./coach";
 import { buildEnrichmentIndex } from "./enrich";
 import { getFfcAdp } from "./ffc";
+import { getInjuryTable } from "./injuries";
 import { getNflverseSeason } from "./nflverse";
 import {
   beforeYourPickSummary,
@@ -263,6 +264,7 @@ export async function buildLiveState(
       ? draftYear - 1
       : new Date().getFullYear() - 1;
   const nflversePromise = getNflverseSeason(lastSeasonYear);
+  const injuryPromise = getInjuryTable(lastSeasonYear);
 
   let league: SleeperLeague | null = null;
   let users: SleeperLeagueUser[] = [];
@@ -288,7 +290,7 @@ export async function buildLiveState(
   const ffcYear =
     Number.isFinite(draftYear) && draftYear > 2000 ? draftYear : lastSeasonYear + 1;
 
-  const [ffcPlayers, nflverse] = await Promise.all([
+  const [ffcPlayers, nflverse, injuries] = await Promise.all([
     getFfcAdp({
       scoringType,
       superflex,
@@ -296,6 +298,7 @@ export async function buildLiveState(
       year: ffcYear,
     }),
     nflversePromise,
+    injuryPromise,
   ]);
   const extras = buildEnrichmentIndex(players, ffcPlayers, nflverse, scoringType);
 
@@ -344,6 +347,7 @@ export async function buildLiveState(
           players,
           picksUntilUser: clock.picksUntilUser,
           extras,
+          injuries,
         };
   let recommendations =
     unsupported || recommendInput == null ? [] : recommend(recommendInput);
