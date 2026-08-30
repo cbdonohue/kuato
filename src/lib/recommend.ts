@@ -278,7 +278,7 @@ export function depthScore(player: PlayerView): number {
 }
 
 export function adjustValueForStdev(value: number, adpStdev: number | null): number {
-  if (adpStdev == null || adpStdev <= 0) return value;
+  if (adpStdev == null || adpStdev <= 0 || value <= 0) return value;
   if (adpStdev <= 3 && value > 0.5) return value * 1.08;
   return value * (1 - clamp((adpStdev - 3) / 18, 0, 0.45));
 }

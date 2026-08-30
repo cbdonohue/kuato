@@ -702,6 +702,36 @@ describe("recommend", () => {
     expect(clustered?.reasons).toContain("Would be 3 starters on bye 7");
   });
 
+  it("does not let a late-ADP workhorse outrank an early-ADP starter at pick 1", () => {
+    const extras: EnrichmentIndex = new Map([
+      [
+        "early",
+        extra({ adp: 2, adpStdev: 1, lastSeason: lastSeason(320, 17, 80) }),
+      ],
+      [
+        "late",
+        extra({ adp: 64, adpStdev: 12, lastSeason: lastSeason(250, 17, 91) }),
+      ],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 1,
+        extras,
+        players: {
+          early: player("early", "RB", 80, {
+            full_name: "Early RB",
+            depth_chart_order: 1,
+          }),
+          late: player("late", "TE", 80, {
+            full_name: "Late TE",
+            depth_chart_order: 1,
+          }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("early");
+  });
+
   it("trusts a tight ADP more than a wide one when both are falling", () => {
     const extras: EnrichmentIndex = new Map([
       ["consensus", extra({ adp: 10, adpStdev: 2 })],
@@ -788,6 +818,7 @@ describe("board enrichment scores", () => {
     expect(adjustValueForStdev(2, 2)).toBeCloseTo(2.16, 5);
     expect(adjustValueForStdev(2, 12)).toBeLessThan(2);
     expect(adjustValueForStdev(2, null)).toBe(2);
+    expect(adjustValueForStdev(-2.5, 12)).toBe(-2.5);
   });
 
   it("counts starter byes and ignores bench", () => {
