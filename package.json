@@ -1,12 +1,34 @@
 {
-  "name": "football",
+  "name": "kuato",
   "version": "0.1.0",
   "private": true,
+  "description": "Password-gated live redraft pick recommendations for Sleeper fantasy football",
+  "license": "MIT",
+  "author": "Chris Donohue",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cbdonohue/kuato.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cbdonohue/kuato/issues"
+  },
+  "homepage": "https://github.com/cbdonohue/kuato#readme",
+  "keywords": [
+    "sleeper",
+    "fantasy-football",
+    "draft-assistant",
+    "nextjs",
+    "nfl"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
