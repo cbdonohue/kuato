@@ -1,5 +1,7 @@
 # Kuato
 
+<img src="public/kuato.png" alt="Kuato" width="160" />
+
 Password-gated live redraft pick recommendations for a [Sleeper](https://sleeper.com) username. Look up your drafts, open a room, and get a top-5 board from Fantasy Football Calculator ADP vs pick number, your roster holes, who still needs the position before you pick, ADP tier cliffs, and same-team stacks.
 
 Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynasty leagues are unsupported.

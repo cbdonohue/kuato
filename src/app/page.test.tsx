@@ -10,7 +10,7 @@ describe("Home page", () => {
   it("renders the drafts tab by default", async () => {
     render(await Home({ searchParams: Promise.resolve({}) }));
     expect(
-      screen.getByRole("heading", { name: "Sleeper draft assistant" }),
+      screen.getByRole("heading", { name: "Kuato" }),
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Sleeper username")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Your drafts" })).toHaveClass("bg-accent");

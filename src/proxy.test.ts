@@ -51,5 +51,14 @@ describe("proxy", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("http://localhost/login");
   });
+
+  it("lets anonymous users load brand assets", () => {
+    delete process.env.SITE_PASSWORD;
+    for (const path of ["/kuato.png", "/icon.png", "/apple-icon.png", "/favicon.ico"]) {
+      const res = proxy(request(path));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    }
+  });
 });
 

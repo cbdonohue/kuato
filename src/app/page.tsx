@@ -1,4 +1,5 @@
 import { AppNav } from "@/components/app-nav";
+import { BrandMark } from "@/components/brand";
 import { HomeSearch } from "@/components/home-search";
 import { MockDrafts } from "@/components/mock-drafts";
 import Link from "next/link";
@@ -15,11 +16,12 @@ export default async function Home({
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-10 sm:py-16">
       <AppNav />
       <header className="mb-10 max-w-2xl">
+        <BrandMark size={96} className="mb-5" />
         <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-accent">
           Live redraft
         </p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          Sleeper draft assistant
+          Kuato
         </h1>
         <p className="mt-4 max-w-xl text-base leading-7 text-muted">
           Look up a Sleeper username or open a mock by draft ID. You get

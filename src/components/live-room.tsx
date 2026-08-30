@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLink } from "@/components/brand";
 import { CoachPanel, type AiTrigger } from "@/components/coach-panel";
 import { PositionBadge } from "@/components/position-badge";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -240,9 +241,7 @@ export function LiveRoom({
       <header className="flex flex-col gap-4 border-b border-panel-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-xs uppercase tracking-[0.18em] text-muted">
-              All drafts
-            </Link>
+            <BrandLink />
             <Link
               href="/?tab=mock"
               className="text-xs uppercase tracking-[0.18em] text-muted"
