@@ -13,7 +13,7 @@ describe("parseCsv", () => {
   });
 
   it("unescapes doubled quotes and returns no records without a header row", () => {
-    const rows = parseCsv(`name,note\n"Gibbs, Jr.","He said ""go""");
+    const rows = parseCsv('name,note\n"Gibbs, Jr.","He said ""go"""');
     expect(rows[0].name).toBe("Gibbs, Jr.");
     expect(rows[0].note).toBe('He said "go"');
     expect(parseCsv("only-header\n")).toEqual([]);

@@ -46,7 +46,7 @@ import {
   rosterPositionsFor,
 } from "./live";
 import { getCoachNote, shouldAskCoach } from "./coach";
-import { EMPTY_NFLVERSE } from "./nflverse";
+import { EMPTY_NFLVERSE, getNflverseSeason } from "./nflverse";
 import { loadRecStories } from "./news";
 import { getFfcAdp } from "./ffc";
 import {
