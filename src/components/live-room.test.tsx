@@ -123,6 +123,7 @@ function liveState(overrides: Partial<LiveState> = {}): LiveState {
     ],
     newsSources: ["ESPN", "Google News"],
     coachNote: "Take Chase if Henry is gone.",
+    aiEnabled: true,
     recentPicks: [
       {
         pickNo: 24,

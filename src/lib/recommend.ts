@@ -232,6 +232,75 @@ export function injuryPenalty(status: string | null): number {
   return 0;
 }
 
+const BENCH_LIKE = new Set(["BN", "IR", "TAXI"]);
+
+const PPG_BASELINE: Record<ScoringType, Record<string, number>> = {
+  ppr: { QB: 17, RB: 11, WR: 11.5, TE: 8.5 },
+  half_ppr: { QB: 17, RB: 10.5, WR: 10, TE: 7.5 },
+  std: { QB: 17, RB: 10, WR: 8.5, TE: 6.5 },
+};
+
+export function depthOrder(depth: string | null): number | null {
+  if (!depth) return null;
+  const match = /^(QB|RB|WR|TE)(\d+)$/.exec(depth);
+  if (!match) return null;
+  const order = Number(match[2]);
+  return Number.isFinite(order) && order >= 1 ? order : null;
+}
+
+export function productionScore(player: PlayerView, scoringType: ScoringType): number {
+  const ly = player.lastSeason;
+  if (!ly || ly.games < 6) return 0;
+  if (!SKILL_POSITIONS.has(player.position)) return 0;
+  const baseline = PPG_BASELINE[scoringType][player.position];
+  if (baseline == null) return 0;
+  return clamp((ly.fantasyPts / ly.games - baseline) / 6, -0.9, 1.3);
+}
+
+export function snapScore(player: PlayerView): number {
+  const snap = player.lastSeason?.snapPct;
+  if (snap == null || !SKILL_POSITIONS.has(player.position)) return 0;
+  if (snap >= 80) return 0.5;
+  if (snap >= 65) return 0.3;
+  if (snap >= 50) return 0.1;
+  if (player.rookie) return 0;
+  if (snap < 30) return -0.45;
+  if (snap < 45) return -0.2;
+  return 0;
+}
+
+export function depthScore(player: PlayerView): number {
+  const order = depthOrder(player.depth);
+  if (order == null) return 0;
+  if (order === 1) return 0.4;
+  if (order === 2) return 0.1;
+  return -0.25;
+}
+
+export function adjustValueForStdev(value: number, adpStdev: number | null): number {
+  if (adpStdev == null || adpStdev <= 0 || value <= 0) return value;
+  if (adpStdev <= 3 && value > 0.5) return value * 1.08;
+  return value * (1 - clamp((adpStdev - 3) / 18, 0, 0.45));
+}
+
+export function starterByeCounts(roster: RosterSlotView[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const entry of roster) {
+    if (BENCH_LIKE.has(entry.slot) || !entry.player?.byeWeek) continue;
+    const bye = entry.player.byeWeek;
+    counts.set(bye, (counts.get(bye) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function byeClusterPenalty(player: PlayerView, sameByeStarters: number): number {
+  if (player.byeWeek == null || LATE_ONLY.has(player.position)) return 0;
+  if (sameByeStarters >= 3) return 1.2;
+  if (sameByeStarters >= 2) return 0.85;
+  if (sameByeStarters === 1) return 0.2;
+  return 0;
+}
+
 function starterSlots(rosterPositions: string[]): string[] {
   return rosterPositions.filter((slot) => slot !== "BN" && slot !== "IR" && slot !== "TAXI");
 }
@@ -505,6 +574,12 @@ function reasonsFor(opts: {
   tier: TierBoost | undefined;
   stackName: string | null;
   injury: string | null;
+  production: number;
+  snap: number;
+  snapPct: number | null;
+  depth: string | null;
+  sameByeStarters: number;
+  byeWeek: number | null;
 }): string[] {
   const reasons: string[] = [];
   if (opts.need >= 2) reasons.push("Fills a starter hole");
@@ -522,6 +597,26 @@ function reasonsFor(opts: {
   if (opts.stackName) reasons.push(`Stacks with ${opts.stackName}`);
   if (opts.injury) reasons.push(opts.injury);
   if (opts.value >= 1) reasons.push("Falling vs ADP");
+  if (opts.production >= 0.55) reasons.push("Strong last season");
+  if (opts.snap >= 0.3) {
+    reasons.push(
+      opts.snapPct != null
+        ? `Workhorse snap share (${opts.snapPct}%)`
+        : "Workhorse snap share",
+    );
+  } else if (opts.snap <= -0.3) {
+    reasons.push(
+      opts.snapPct != null
+        ? `Limited snaps last year (${opts.snapPct}%)`
+        : "Limited snaps last year",
+    );
+  }
+  if (depthOrder(opts.depth) === 1 && opts.depth) {
+    reasons.push(`Depth-chart ${opts.depth}`);
+  }
+  if (opts.sameByeStarters >= 2 && opts.byeWeek != null) {
+    reasons.push(`Would be ${opts.sameByeStarters + 1} starters on bye ${opts.byeWeek}`);
+  }
   if (reasons.length === 0) reasons.push("Best available on the board");
   return reasons;
 }
@@ -560,21 +655,33 @@ export function recommend(input: RecommendInput): Recommendation[] {
 
   const demand = upcomingDemand(input);
   const tiers = tierBoosts(available);
+  const byeCounts = starterByeCounts(roster);
 
   const scored = available.map((player) => {
     const value = clamp((input.pickNo - player.rank) / 10, -2.5, 4);
+    const valueAdj = adjustValueForStdev(value, player.adpStdev);
     const need = needScore(player.position, holes, input.scoringType, superflex);
     const demandWeight = demand.weights[player.position] ?? 0;
     const demandCount = demand.counts[player.position] ?? 0;
     const tier = tiers.get(player.playerId);
     const partner = stackPartner(player, roster);
     const stack = partner ? 1 : 0;
+    const production = productionScore(player, input.scoringType);
+    const snap = snapScore(player);
+    const depth = depthScore(player);
+    const sameByeStarters =
+      player.byeWeek == null ? 0 : (byeCounts.get(player.byeWeek) ?? 0);
+    const byePen = byeClusterPenalty(player, sameByeStarters);
     const total =
-      value * 1.0 +
+      valueAdj * 1.0 +
       need * 1.15 +
       demandScore(demandWeight) * 1.0 +
       (tier?.score ?? 0) * 0.9 +
-      stack * 0.5 -
+      stack * 0.5 +
+      production * 0.85 +
+      snap * 0.7 +
+      depth * 0.6 -
+      byePen * 0.8 -
       injuryPenalty(player.injuryStatus);
     return {
       player,
@@ -588,6 +695,12 @@ export function recommend(input: RecommendInput): Recommendation[] {
         tier,
         stackName: partner?.name ?? null,
         injury: injuryReason(player),
+        production,
+        snap,
+        snapPct: player.lastSeason?.snapPct ?? null,
+        depth: player.depth,
+        sameByeStarters,
+        byeWeek: player.byeWeek,
       }),
     };
   });

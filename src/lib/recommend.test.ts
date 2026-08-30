@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustValueForStdev,
   beforeYourPickSummary,
+  byeClusterPenalty,
   detectUnsupported,
   depthLabel,
+  depthOrder,
+  depthScore,
   fillRosterSlots,
   injuryPenalty,
   injuryReason,
@@ -13,17 +17,26 @@ import {
   nextPickNumber,
   picksUntilRosterOnClock,
   playerName,
+  productionScore,
   recommend,
   rosterForPick,
   scoringFromSettings,
   sleeperRankValue,
   slotForPick,
+  snapScore,
+  starterByeCounts,
   toPlayerView,
   userPicksForRoster,
   type ClockInput,
   type RecommendInput,
 } from "./recommend";
-import type { EnrichmentIndex, SleeperPick, SleeperPlayer } from "./types";
+import type {
+  EnrichmentIndex,
+  LastSeasonStats,
+  PlayerExtras,
+  SleeperPick,
+  SleeperPlayer,
+} from "./types";
 
 const twelveTeamSnake: ClockInput = {
   teams: 12,
@@ -617,6 +630,222 @@ describe("recommend", () => {
       }),
     );
     expect(recs[0].reasons).toContain("Questionable · hamstring");
+  });
+
+  it("ranks a workhorse WR1 with a strong season over a similar-ADP backup", () => {
+    const extras: EnrichmentIndex = new Map([
+      [
+        "star",
+        {
+          adp: 24,
+          adpStdev: 3,
+          byeWeek: 8,
+          lastSeason: lastSeason(280, 17, 88),
+        },
+      ],
+      [
+        "backup",
+        {
+          adp: 24,
+          adpStdev: 3,
+          byeWeek: 9,
+          lastSeason: lastSeason(140, 17, 28),
+        },
+      ],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 25,
+        extras,
+        players: {
+          star: player("star", "WR", 80, {
+            full_name: "Star WR",
+            depth_chart_order: 1,
+          }),
+          backup: player("backup", "WR", 80, {
+            full_name: "Backup WR",
+            depth_chart_order: 3,
+          }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("star");
+    expect(recs[0].reasons).toContain("Strong last season");
+    expect(recs[0].reasons).toContain("Workhorse snap share (88%)");
+    expect(recs[0].reasons).toContain("Depth-chart WR1");
+    const backup = recs.find((rec) => rec.player.playerId === "backup");
+    expect(backup?.reasons).toContain("Limited snaps last year (28%)");
+  });
+
+  it("penalizes a third starter on the same bye week", () => {
+    const extras: EnrichmentIndex = new Map([
+      ["rbA", extra({ byeWeek: 7 })],
+      ["wrA", extra({ byeWeek: 7 })],
+      ["clustered", extra({ adp: 30, byeWeek: 7 })],
+      ["spread", extra({ adp: 30, byeWeek: 12 })],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 25,
+        extras,
+        picks: [pick("rbA", 1, 1), pick("wrA", 1, 2)],
+        players: {
+          rbA: player("rbA", "RB", 8),
+          wrA: player("wrA", "WR", 10),
+          clustered: player("clustered", "WR", 80, { full_name: "Bye Twin" }),
+          spread: player("spread", "WR", 80, { full_name: "Off Bye" }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("spread");
+    const clustered = recs.find((rec) => rec.player.playerId === "clustered");
+    expect(clustered?.reasons).toContain("Would be 3 starters on bye 7");
+  });
+
+  it("does not let a late-ADP workhorse outrank an early-ADP starter at pick 1", () => {
+    const extras: EnrichmentIndex = new Map([
+      [
+        "early",
+        extra({ adp: 2, adpStdev: 1, lastSeason: lastSeason(320, 17, 80) }),
+      ],
+      [
+        "late",
+        extra({ adp: 64, adpStdev: 12, lastSeason: lastSeason(250, 17, 91) }),
+      ],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 1,
+        extras,
+        players: {
+          early: player("early", "RB", 80, {
+            full_name: "Early RB",
+            depth_chart_order: 1,
+          }),
+          late: player("late", "TE", 80, {
+            full_name: "Late TE",
+            depth_chart_order: 1,
+          }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("early");
+  });
+
+  it("trusts a tight ADP more than a wide one when both are falling", () => {
+    const extras: EnrichmentIndex = new Map([
+      ["consensus", extra({ adp: 10, adpStdev: 2 })],
+      ["volatile", extra({ adp: 10, adpStdev: 14 })],
+    ]);
+    const recs = recommend(
+      input({
+        pickNo: 30,
+        extras,
+        players: {
+          consensus: player("consensus", "WR", 80, { full_name: "Consensus WR" }),
+          volatile: player("volatile", "WR", 80, { full_name: "Volatile WR" }),
+        },
+      }),
+    );
+    expect(recs[0].player.playerId).toBe("consensus");
+    expect(recs[0].reasons).toContain("Falling vs ADP");
+  });
+});
+
+function lastSeason(
+  fantasyPts: number,
+  games = 17,
+  snapPct: number | null = 80,
+): LastSeasonStats {
+  return { season: 2025, games, fantasyPts, snapPct, line: "" };
+}
+
+function extra(partial: Partial<PlayerExtras>): PlayerExtras {
+  return {
+    adp: partial.adp ?? null,
+    adpStdev: partial.adpStdev ?? null,
+    byeWeek: partial.byeWeek ?? null,
+    lastSeason: partial.lastSeason ?? null,
+  };
+}
+
+describe("board enrichment scores", () => {
+  it("scores last-season PPG against a scoring-aware baseline", () => {
+    const wr = toPlayerView(player("wr", "WR", 8), "wr", undefined, new Map([
+      ["wr", extra({ lastSeason: lastSeason(280, 17, 88) })],
+    ]));
+    expect(productionScore(wr, "ppr")).toBeCloseTo((280 / 17 - 11.5) / 6, 5);
+    expect(productionScore(wr, "std")).toBeGreaterThan(productionScore(wr, "ppr"));
+    expect(productionScore(toPlayerView(player("wr", "WR", 8), "wr"), "ppr")).toBe(0);
+    const short = toPlayerView(player("wr", "WR", 8), "wr", undefined, new Map([
+      ["wr", extra({ lastSeason: lastSeason(80, 4, 90) })],
+    ]));
+    expect(productionScore(short, "ppr")).toBe(0);
+  });
+
+  it("treats high snap share as a boost and punishes veteran backups", () => {
+    const workhorse = toPlayerView(player("wr", "WR", 8), "wr", undefined, new Map([
+      ["wr", extra({ lastSeason: lastSeason(200, 17, 85) })],
+    ]));
+    const backup = toPlayerView(player("wr", "WR", 8), "wr", undefined, new Map([
+      ["wr", extra({ lastSeason: lastSeason(80, 17, 22) })],
+    ]));
+    const rookie = toPlayerView(
+      player("wr", "WR", 8, { years_exp: 0 }),
+      "wr",
+      undefined,
+      new Map([["wr", extra({ lastSeason: lastSeason(40, 17, 22) })]]),
+    );
+    expect(snapScore(workhorse)).toBe(0.5);
+    expect(snapScore(backup)).toBe(-0.45);
+    expect(snapScore(rookie)).toBe(0);
+  });
+
+  it("parses depth-chart order and scores WR1 above WR3", () => {
+    expect(depthOrder("WR1")).toBe(1);
+    expect(depthOrder("RB3")).toBe(3);
+    expect(depthOrder(null)).toBeNull();
+    expect(depthScore(toPlayerView(player("wr", "WR", 8, { depth_chart_order: 1 }), "wr"))).toBe(
+      0.4,
+    );
+    expect(depthScore(toPlayerView(player("wr", "WR", 8, { depth_chart_order: 3 }), "wr"))).toBe(
+      -0.25,
+    );
+    expect(depthScore(toPlayerView(player("wr", "WR", 8), "wr"))).toBe(0);
+  });
+
+  it("dampens falling-vs-ADP when ADP spread is wide", () => {
+    expect(adjustValueForStdev(2, 2)).toBeCloseTo(2.16, 5);
+    expect(adjustValueForStdev(2, 12)).toBeLessThan(2);
+    expect(adjustValueForStdev(2, null)).toBe(2);
+    expect(adjustValueForStdev(-2.5, 12)).toBe(-2.5);
+  });
+
+  it("counts starter byes and ignores bench", () => {
+    const players = {
+      wr1: player("wr1", "WR", 8),
+      wr2: player("wr2", "WR", 12),
+      rb1: player("rb1", "RB", 4),
+    };
+    const extras: EnrichmentIndex = new Map([
+      ["wr1", extra({ byeWeek: 7 })],
+      ["wr2", extra({ byeWeek: 7 })],
+      ["rb1", extra({ byeWeek: 10 })],
+    ]);
+    const roster = fillRosterSlots(
+      [pick("wr1", 1, 1), pick("wr2", 1, 2), pick("rb1", 1, 3)],
+      ["WR", "WR", "BN"],
+      players,
+      extras,
+    );
+    const counts = starterByeCounts(roster);
+    expect(counts.get(7)).toBe(2);
+    expect(counts.get(10)).toBeUndefined();
+    const clustered = toPlayerView(player("wr3", "WR", 20), "wr3", undefined, new Map([
+      ["wr3", extra({ byeWeek: 7 })],
+    ]));
+    expect(byeClusterPenalty(clustered, 2)).toBe(0.85);
+    expect(byeClusterPenalty(clustered, 0)).toBe(0);
   });
 });
 
