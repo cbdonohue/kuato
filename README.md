@@ -21,7 +21,7 @@ Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localh
 
 ## Live room
 
-Recommendations show FFC ADP (PPR / half-PPR / standard, or 2QB when the league is Superflex), bye week, injury, depth chart, and last-season nflverse stats. Reasons call out starter holes, demand from the next managers, the last player before an ADP gap, stacks, and injury notes. A news strip above the board shows a few recent stories for those recs.
+Recommendations show FFC ADP (PPR / half-PPR / standard, or 2QB when the league is Superflex), bye week, injury, depth chart, and last-season nflverse stats. Reasons call out starter holes, demand from the next managers, the last player before an ADP gap, stacks, and injury notes. A news strip above the board shows a few recent stories for those recs. With an API key you can ask the coach, scout a remaining player, compare two names, review the roster, or get a news / sleepers read.
 
 The remaining board lists ADP, name, bye, and last-season points. Filter by position or search a name:
 
@@ -38,7 +38,16 @@ Sleeper `search_rank` is the fallback when a player has no FFC ADP. Rankings are
 
 ## Optional AI coach
 
-Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. When you are on the clock or within two picks, the live room adds a 2–3 sentence note from the recs and who still needs each position before you. Without a key, you still get the top-5 and reasons.
+Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `.env.local`. Without a key, you still get the top-5 and reasons.
+
+When a key is set, the live room adds:
+
+- A 2–3 sentence pick note when you are on the clock or within two picks
+- **Ask** — freeform questions about this board, with suggested prompts from your holes
+- **Scout** — a fit / risk / take-now note for any remaining player
+- **Compare** — head-to-head for two players on this roster
+- **Review roster** — holes, bye clusters, and the next-pick plan
+- **News briefing** and **Sleepers & fades** from the current recs and remaining ADP board
 
 ## Tests
 

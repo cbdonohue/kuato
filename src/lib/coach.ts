@@ -1,4 +1,7 @@
+import { completeLlm, hasLlmKey } from "./llm";
 import type { DraftStory, LiveState, Recommendation, ScoringType } from "./types";
+
+export { hasLlmKey };
 
 type CoachCacheEntry = {
   note: string;
@@ -13,10 +16,6 @@ function cacheKey(draftId: string, pickNo: number, topPlayerId: string): string 
 
 export function shouldAskCoach(picksUntilUser: number | null): boolean {
   return picksUntilUser !== null && picksUntilUser <= 2;
-}
-
-export function hasLlmKey(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
 }
 
 export async function getCoachNote(opts: {
@@ -42,9 +41,12 @@ export async function getCoachNote(opts: {
 
   const prompt = buildPrompt(opts);
   try {
-    const note = process.env.OPENAI_API_KEY
-      ? await callOpenAi(prompt)
-      : await callAnthropic(prompt);
+    const note = await completeLlm({
+      prompt,
+      maxTokens: 180,
+      timeoutMs: 8000,
+      temperature: 0.4,
+    });
     if (note) cache.set(key, { note, at: Date.now() });
     return note;
   } catch {
@@ -92,63 +94,6 @@ function buildPrompt(opts: {
   ]
     .filter((line) => line.length > 0)
     .join("\n");
-}
-
-async function callOpenAi(prompt: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.4,
-        max_tokens: 180,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    return data.choices?.[0]?.message?.content?.trim() || null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function callAnthropic(prompt: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-haiku-latest",
-        max_tokens: 180,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      content?: { type: string; text?: string }[];
-    };
-    const text = data.content?.find((part) => part.type === "text")?.text;
-    return text?.trim() || null;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 export function rosterHoleLabels(stateRoster: LiveState["roster"]): string[] {

@@ -24,8 +24,9 @@ export default async function Home({
         <p className="mt-4 max-w-xl text-base leading-7 text-muted">
           Look up a Sleeper username or open a mock by draft ID. You get
           next-pick recommendations from the board, your roster holes, and who
-          still needs the position. Sleeper stays read-only — you still make
-          the pick in-app.
+          still needs the position. With an AI key you can ask the coach, scout
+          a player, or compare two names. Sleeper stays read-only — you still
+          make the pick in-app.
         </p>
       </header>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">

@@ -1,5 +1,5 @@
 import { loadRecStories } from "./news";
-import { getCoachNote, rosterHoleLabels, shouldAskCoach } from "./coach";
+import { getCoachNote, hasLlmKey, rosterHoleLabels, shouldAskCoach } from "./coach";
 import { buildEnrichmentIndex } from "./enrich";
 import { getFfcAdp } from "./ffc";
 import { getNflverseSeason } from "./nflverse";
@@ -248,6 +248,7 @@ function availableBoard(
 export async function buildLiveState(
   draftId: string,
   username: string,
+  opts?: { skipCoach?: boolean },
 ): Promise<LiveState> {
   const user = await getUser(username);
   const [draft, picks, tradedPicks, players] = await Promise.all([
@@ -384,6 +385,7 @@ export async function buildLiveState(
 
   let coachNote: string | null = null;
   if (
+    !opts?.skipCoach &&
     !unsupported &&
     shouldAskCoach(clock.picksUntilUser) &&
     recommendations.length > 0
@@ -423,6 +425,7 @@ export async function buildLiveState(
     stories,
     newsSources,
     coachNote,
+    aiEnabled: hasLlmKey(),
     recentPicks,
     available: availableBoard(picks, players, extras),
   };
