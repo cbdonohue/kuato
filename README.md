@@ -10,9 +10,7 @@ Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynas
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js 20+](https://img.shields.io/badge/node-20%2B-green.svg)](https://nodejs.org)
 
-<video src="docs/live-room.mp4" autoplay muted loop playsinline controls>
-  <a href="docs/live-room.mp4">Live mock draft with all features</a>
-</video>
+![Live mock draft with all features](docs/live-room.webp)
 
 ## Features
 

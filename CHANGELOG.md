@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- README uses an autoplay live-room walkthrough instead of stills and GIFs
+- README uses an animated WebP walkthrough (GitHub will not play a repo-hosted `<video>`)
 
 ### Fixed
 

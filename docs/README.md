@@ -4,7 +4,8 @@ Media and notes used by the [root README](../README.md).
 
 | File | Used for |
 | --- | --- |
-| `live-room.mp4` | README autoplay walkthrough (top-5, news, coach tools, remaining board, live picks) |
+| `live-room.webp` | README autoplay walkthrough (GitHub plays animated images; it does not play a repo `<video>` file) |
+| `live-room.mp4` | Full-quality source for regenerating the WebP |
 | [architecture.md](architecture.md) | How a live room is assembled |
 
-Update `live-room.mp4` when the live room changes.
+Update `live-room.webp` (and the mp4 source) when the live room changes.
