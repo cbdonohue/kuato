@@ -5,7 +5,7 @@ import { PositionBadge } from "@/components/position-badge";
 import { SignOutButton } from "@/components/sign-out-button";
 import type { DraftStory, LiveState, PlayerView } from "@/lib/types";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const POLL_MS = 2000;
 
@@ -132,6 +132,12 @@ export function LiveRoom({
   const [compareMode, setCompareMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [aiTrigger, setAiTrigger] = useState<AiTrigger | null>(null);
+  const triggerNonce = useRef(0);
+
+  function nextAiTrigger(partial: Omit<AiTrigger, "nonce">): AiTrigger {
+    triggerNonce.current += 1;
+    return { ...partial, nonce: triggerNonce.current };
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +203,7 @@ export function LiveRoom({
       toggleSelected(playerId);
       return;
     }
-    setAiTrigger({ nonce: Date.now(), action: "scout", playerId });
+    setAiTrigger(nextAiTrigger({ action: "scout", playerId }));
   }
 
   function toggleSelected(playerId: string) {
@@ -303,11 +309,12 @@ export function LiveRoom({
             onClearCompare={() => setSelectedIds([])}
             onCompareSelected={() => {
               if (selectedIds.length !== 2) return;
-              setAiTrigger({
-                nonce: Date.now(),
-                action: "compare",
-                playerIds: selectedIds,
-              });
+              setAiTrigger(
+                nextAiTrigger({
+                  action: "compare",
+                  playerIds: selectedIds,
+                }),
+              );
             }}
           />
 

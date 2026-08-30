@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Sleeper API docs
+    url: https://docs.sleeper.com/
+    about: Kuato only reads the public Sleeper API. It cannot make picks.
+  - name: Security report
+    url: https://github.com/cbdonohue/kuato/security/advisories/new
+    about: Report a vulnerability privately instead of opening a public issue.

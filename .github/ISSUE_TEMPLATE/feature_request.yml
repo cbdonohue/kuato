@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest an improvement to the live room, data, or docs
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Kuato do instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Recommendations / scoring
+        - Live room UI
+        - Data sources (Sleeper, FFC, nflverse, news)
+        - AI coach
+        - Auth / hosting
+        - Docs / CI
+        - Other
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Out of scope unless the issue argues otherwise: making picks on Sleeper, auction drafts, and dynasty / taxi leagues.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context
+      description: Mock IDs, scoring, roster format, or examples of the board you care about.
