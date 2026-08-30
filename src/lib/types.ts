@@ -233,6 +233,7 @@ export type LiveState = {
   stories: DraftStory[];
   newsSources: string[];
   coachNote: string | null;
+  aiEnabled: boolean;
   recentPicks: RecentPickView[];
   available: PlayerView[];
 };

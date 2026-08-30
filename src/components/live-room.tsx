@@ -1,5 +1,6 @@
 "use client";
 
+import { CoachPanel, type AiTrigger } from "@/components/coach-panel";
 import { PositionBadge } from "@/components/position-badge";
 import { SignOutButton } from "@/components/sign-out-button";
 import type { DraftStory, LiveState, PlayerView } from "@/lib/types";
@@ -128,6 +129,9 @@ export function LiveRoom({
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [position, setPosition] = useState("ALL");
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [aiTrigger, setAiTrigger] = useState<AiTrigger | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +178,37 @@ export function LiveRoom({
       );
     });
   }, [state, query, position]);
+
+  const selectedNames = useMemo(() => {
+    if (!state) return [];
+    return selectedIds
+      .map((id) => {
+        const fromRec = state.recommendations.find((rec) => rec.player.playerId === id);
+        if (fromRec) return fromRec.player.name;
+        const fromBoard = state.available.find((player) => player.playerId === id);
+        if (fromBoard) return fromBoard.name;
+        const fromRoster = state.roster.find((slot) => slot.player?.playerId === id);
+        return fromRoster?.player?.name ?? id;
+      });
+  }, [state, selectedIds]);
+
+  function scoutPlayer(playerId: string) {
+    if (compareMode) {
+      toggleSelected(playerId);
+      return;
+    }
+    setAiTrigger({ nonce: Date.now(), action: "scout", playerId });
+  }
+
+  function toggleSelected(playerId: string) {
+    setSelectedIds((current) => {
+      if (current.includes(playerId)) {
+        return current.filter((id) => id !== playerId);
+      }
+      if (current.length >= 2) return [current[1], playerId];
+      return [...current, playerId];
+    });
+  }
 
   if (error && !state) {
     return (
@@ -253,14 +288,28 @@ export function LiveRoom({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="flex flex-col gap-4">
-          {state.coachNote ? (
-            <div className="rounded-xl border border-accent/25 bg-accent-dim px-4 py-3 text-sm leading-6">
-              <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
-                Coach
-              </p>
-              {state.coachNote}
-            </div>
-          ) : null}
+          <CoachPanel
+            draftId={draftId}
+            username={username}
+            state={state}
+            trigger={aiTrigger}
+            compareMode={compareMode}
+            selectedIds={selectedIds}
+            selectedNames={selectedNames}
+            onToggleCompare={() => {
+              setCompareMode((current) => !current);
+              if (compareMode) setSelectedIds([]);
+            }}
+            onClearCompare={() => setSelectedIds([])}
+            onCompareSelected={() => {
+              if (selectedIds.length !== 2) return;
+              setAiTrigger({
+                nonce: Date.now(),
+                action: "compare",
+                playerIds: selectedIds,
+              });
+            }}
+          />
 
           <div className="rounded-xl border border-panel-border bg-panel">
             <div className="flex items-center justify-between border-b border-panel-border px-4 py-3">
@@ -282,7 +331,12 @@ export function LiveRoom({
                 {state.recommendations.map((rec, index) => {
                   const ly = lastSeasonLine(rec.player);
                   return (
-                  <li key={rec.player.playerId} className="flex flex-col gap-2 px-4 py-3">
+                  <li
+                    key={rec.player.playerId}
+                    className={`flex flex-col gap-2 px-4 py-3 ${
+                      selectedIds.includes(rec.player.playerId) ? "bg-accent-dim/60" : ""
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <span className="font-mono text-sm text-muted">
@@ -297,6 +351,13 @@ export function LiveRoom({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {state.aiEnabled ? (
+                          <PlayerAction
+                            label={compareMode ? "Select" : "Scout"}
+                            selected={selectedIds.includes(rec.player.playerId)}
+                            onClick={() => scoutPlayer(rec.player.playerId)}
+                          />
+                        ) : null}
                         <PositionBadge position={rec.player.position} />
                       </div>
                     </div>
@@ -388,7 +449,13 @@ export function LiveRoom({
                 </select>
               </div>
             </div>
-            <AvailableList players={filtered} />
+            <AvailableList
+              players={filtered}
+              aiEnabled={state.aiEnabled}
+              compareMode={compareMode}
+              selectedIds={selectedIds}
+              onScout={scoutPlayer}
+            />
           </div>
         </section>
       </div>
@@ -437,7 +504,19 @@ export function LiveRoom({
   );
 }
 
-function AvailableList({ players }: { players: PlayerView[] }) {
+function AvailableList({
+  players,
+  aiEnabled,
+  compareMode,
+  selectedIds,
+  onScout,
+}: {
+  players: PlayerView[];
+  aiEnabled: boolean;
+  compareMode: boolean;
+  selectedIds: string[];
+  onScout: (playerId: string) => void;
+}) {
   if (players.length === 0) {
     return <p className="px-4 py-6 text-sm text-muted">No matching players.</p>;
   }
@@ -448,12 +527,15 @@ function AvailableList({ players }: { players: PlayerView[] }) {
         <span className="flex-1">Player</span>
         <span className="w-8 text-right">Bye</span>
         <span className="w-10 text-right">LY</span>
+        <span className="w-16" />
         <span className="w-10" />
       </li>
       {players.map((player) => (
         <li
           key={player.playerId}
-          className="flex items-start justify-between gap-3 px-4 py-2 text-sm"
+          className={`flex items-start justify-between gap-3 px-4 py-2 text-sm ${
+            selectedIds.includes(player.playerId) ? "bg-accent-dim/60" : ""
+          }`}
         >
           <span className="w-10 font-mono text-xs text-muted">
             {formatAdp(player.adp, player.rank)}
@@ -477,9 +559,42 @@ function AvailableList({ players }: { players: PlayerView[] }) {
           <span className="w-10 text-right font-mono text-xs text-muted">
             {player.lastSeason ? player.lastSeason.fantasyPts.toFixed(0) : "—"}
           </span>
+          {aiEnabled ? (
+            <PlayerAction
+              label={compareMode ? "Select" : "Scout"}
+              selected={selectedIds.includes(player.playerId)}
+              onClick={() => onScout(player.playerId)}
+            />
+          ) : (
+            <span className="w-16" />
+          )}
           <PositionBadge position={player.position} />
         </li>
       ))}
     </ul>
+  );
+}
+
+function PlayerAction({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-16 shrink-0 rounded-md border px-1.5 py-1 text-[11px] font-semibold transition ${
+        selected
+          ? "border-accent/50 bg-accent-dim text-accent"
+          : "border-panel-border text-muted hover:border-accent/40 hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
