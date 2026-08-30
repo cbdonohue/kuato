@@ -44,7 +44,7 @@ export function HomeSearch() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
         <input
           value={username}

@@ -13,13 +13,11 @@ npm install
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localhost:3000](http://localhost:3000), sign in, enter a Sleeper username, and open a `drafting` or `pre_draft` league.
+Copy `.env.example` to `.env.local` and set `SITE_PASSWORD`. Open [http://localhost:3000](http://localhost:3000), sign in, then pick **Your drafts** (Sleeper username) or **Mock draft** (paste a Sleeper mock ID). `/debug` still redirects to the mock tab.
 
 ![Sign-in](docs/login.png)
 
 ![Username lookup with a pre-draft league](docs/drafts.png)
-
-To test a Sleeper mock draft, open [http://localhost:3000/debug](http://localhost:3000/debug), paste draft IDs, and open the live room.
 
 ## Live room
 

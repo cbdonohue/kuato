@@ -26,7 +26,7 @@ function roomHref(draftId: string, username: string): string {
   return `/draft/${encodeURIComponent(draftId)}?username=${encodeURIComponent(username)}`;
 }
 
-export function DebugDrafts() {
+export function MockDrafts() {
   const [username, setUsername] = useState("");
   const [draftIds, setDraftIds] = useState("");
   const [ready, setReady] = useState(false);
@@ -76,6 +76,32 @@ export function DebugDrafts() {
 
   return (
     <div className="flex flex-col gap-8">
+      <details className="rounded-xl border border-panel-border bg-panel px-5 py-4">
+        <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
+          How to get a mock draft ID
+        </summary>
+        <ol className="mt-3 flex list-decimal flex-col gap-2 pl-5 text-sm leading-6 text-muted">
+          <li>On sleeper.com, start or join a mock draft (web is easiest).</li>
+          <li>
+            Open the lobby or board. The URL looks like{" "}
+            <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+              sleeper.com/draft/nfl/1399455372749582336
+            </code>
+          </li>
+          <li>
+            Copy the long number after{" "}
+            <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+              /draft/nfl/
+            </code>{" "}
+            — that is the draft ID.
+          </li>
+          <li>
+            Paste it below with the Sleeper username you joined as so the room
+            can find your seat.
+          </li>
+        </ol>
+      </details>
+
       <label className="flex flex-col gap-2">
         <span className="text-xs uppercase tracking-[0.16em] text-muted">
           Sleeper username
@@ -83,7 +109,7 @@ export function DebugDrafts() {
         <input
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          placeholder="Your Sleeper username"
+          placeholder="Username you joined the mock with"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
@@ -116,15 +142,15 @@ export function DebugDrafts() {
           value={draftIds}
           onChange={(event) => setDraftIds(event.target.value)}
           placeholder={"One Sleeper draft ID per line\n123456789012345678"}
-          rows={6}
+          rows={5}
           className="rounded-lg border border-panel-border bg-panel px-4 py-3 font-mono text-sm outline-none ring-accent/40 placeholder:text-muted focus:ring-2"
         />
       </label>
 
       {ids.length === 0 ? (
         <p className="rounded-lg border border-panel-border bg-panel px-4 py-6 text-sm text-muted">
-          Paste or save a Sleeper mock draft ID, then open the live room. IDs
-          stay in this browser.
+          Save a Sleeper mock draft ID, then open the live room. IDs stay in
+          this browser.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
