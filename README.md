@@ -1,107 +1,103 @@
 # Kuato
 
-<img src="public/kuato.png" alt="Kuato" width="160" />
+Password-gated Next.js app for live [Sleeper](https://sleeper.com/) redraft rooms. It ranks remaining players from ADP, roster holes, demand, news, and nflverse stats. It cannot make picks. Auction drafts and dynasty leagues are out of scope.
 
-Password-gated live redraft pick recommendations for a [Sleeper](https://sleeper.com) username. Look up your drafts, open a room, and get a top-5 board from Fantasy Football Calculator ADP vs pick number, your roster holes, who still needs the position before you pick, ADP tier cliffs, and same-team stacks.
-
-Sleeper's API is read-only. This app cannot make picks. Auction drafts and dynasty leagues are unsupported.
-
-[![Test](https://github.com/cbdonohue/kuato/actions/workflows/test.yml/badge.svg)](https://github.com/cbdonohue/kuato/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js 20+](https://img.shields.io/badge/node-20%2B-green.svg)](https://nodejs.org)
+## Live draft
 
 ![Live mock draft with all features](docs/live-room.webp)
 
+GitHub autoplays this WebP. Source clip: [`docs/live-room.mp4`](docs/live-room.mp4).
+
 ## Features
 
-- **Your drafts** — look up a Sleeper username and open any of this season's rooms
-- **Mock draft** — paste a Sleeper mock ID (the old `/debug` route redirects here)
-- **Top-5 board** — ADP vs pick, starter holes, upcoming positional demand, tier cliffs, stacks, injury, last-season production, snap share, depth-chart role, and stacked byes
-- **Remaining board** — filter by position or search a name
-- **News strip** — recent headlines for the current recs
-- **Optional AI coach** — Ask, Scout, Compare, roster review, news briefing, sleepers / fades, and injury analysis when an API key is set
+**Access**
 
-## Run
+- Shared password on `/login`
+- **Your drafts** — Sleeper username loads in-progress redraft rooms
+- **Mock draft** — paste a Sleeper mock ID, keep a username for seat, reuse saved IDs
+- `/debug` redirects to the mock tab
+
+**Live room**
+
+- Clock: pick number, round, who is on the clock, picks until you
+- News strip from ESPN RSS (injuries, transactions, rumors)
+- Top 5 remaining with ADP, ADP gap vs the current pick, and why they rank there
+- Your roster (filled from your picks, including Sleeper mocks that omit `roster_id`)
+- Recent picks
+- Remaining board: ADP, bye, last-year production; search by name; filter by position
+
+**Recommendation scoring**
+
+- Fantasy Football Calculator ADP
+- Starter-hole need vs league roster settings (QB / RB / WR / TE / FLEX / K / DEF)
+- Upcoming-pick demand at the same position
+- Tier cliffs when the next ADP drop is steep
+- QB / skill stacks on your roster
+- Injury flags from Sleeper
+- Last-season nflverse production (PPR, rushing, targets)
+- Snap share and depth-chart rank (rookies skip the low-snap penalty)
+- Bye-week clustering
+
+**AI coach** (needs `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`)
+
+- On-the-clock note when it is your pick
+- **Ask** — free-form question about the remaining board
+- **Scout** — one remaining player
+- **Compare** — two remaining players
+- **Review roster** — holes and next-pick plan
+- **News briefing** — ESPN items mapped onto remaining names
+- **Sleepers & fades** — ADP gaps on the remaining board
+- **Injury analysis** — Sleeper injury flags on your roster and remaining players
+
+The coach is optional. Rankings still run without a model key.
+
+## How to use
+
+1. Sign in with the shared password.
+2. Open **Your drafts** and enter a Sleeper username, or **Mock draft** with a mock ID (and username so Kuato can find your seat).
+3. Open a room. The board polls Sleeper while the draft is live.
+
+## Run locally
+
+Node.js 20+ and npm.
 
 ```bash
+git clone https://github.com/cbdonohue/kuato.git
+cd kuato
 npm ci
 cp .env.example .env.local
 ```
 
-Set `SITE_PASSWORD` in `.env.local`. Then:
+Set `SITE_PASSWORD` in `.env.local`. Add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` if you want the coach.
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), sign in, and look up a username or mock ID.
+Open [http://localhost:3000](http://localhost:3000).
 
-| Variable | Required | Purpose |
+| Variable | Required | What it does |
 | --- | --- | --- |
-| `SITE_PASSWORD` | yes | Shared password for the whole app |
-| `OPENAI_API_KEY` | no | Coach tools via OpenAI (`gpt-4o-mini`) |
-| `ANTHROPIC_API_KEY` | no | Coach tools via Anthropic if OpenAI is unset (`claude-3-5-haiku-latest`) |
-
-Without an AI key you still get the top-5 and reasons. Production is a normal Next.js host: set the same variables, run `npm run build` and `npm start`.
-
-## How the top-5 is scored
-
-Each remaining player gets a weighted total in `src/lib/recommend.ts`:
-
-| Signal | What it captures |
-| --- | --- |
-| ADP vs pick | Value relative to the current pick; wide ADP spread shrinks huge reaches |
-| Roster need | Starter holes, with Superflex treating QB as a skill seat |
-| Upcoming demand | How many of the next managers still need that position |
-| Tier cliff | Last player before an ADP gap |
-| Stack | Same-team pairing with a player already on your roster |
-| Production / snaps / depth | Last-season nflverse points, snap share, and depth-chart role |
-| Bye clusters | Penalty when the player shares a bye with your other starters |
-| Injury | Status from Sleeper |
-
-Sleeper `search_rank` is the fallback when a player has no FFC ADP. Rankings are not FantasyPros. Kickers and DST stay off the board until the last two rounds.
-
-## Data
-
-- [Sleeper](https://docs.sleeper.com/) public API for drafts, picks, and players
-- [Fantasy Football Calculator](https://fantasyfootballcalculator.com) ADP (free with attribution; cached about once a day)
-- [nflverse](https://github.com/nflverse) last-season stats and snap share (CC-BY 4.0)
-- [ESPN](https://www.espn.com) unofficial player news and [Google News](https://news.google.com) RSS for top-5 rec headlines (cached about 30 minutes)
-
-ADP format follows the league: PPR / half-PPR / standard, or 2QB when the roster has Superflex.
-
-## Optional AI coach
-
-When `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set, the live room adds:
-
-- A 2–3 sentence pick note when you are on the clock or within two picks
-- **Ask** — freeform questions about this board, with suggested prompts from your holes
-- **Scout** — a fit / risk / take-now note for any remaining player
-- **Compare** — head-to-head for two players on this roster
-- **Review roster** — holes, bye clusters, and the next-pick plan
-- **News briefing**, **Sleepers & fades**, and **Injury analysis** from the current recs, remaining ADP board, and Sleeper injury flags
+| `SITE_PASSWORD` | yes | Shared login |
+| `OPENAI_API_KEY` | no | OpenAI coach |
+| `ANTHROPIC_API_KEY` | no | Anthropic coach |
+| `AI_MODEL` | no | Override the default model id |
 
 ## Tests
 
 ```bash
 npm test
-npm run lint
-npm run typecheck
 npm run test:coverage
 ```
 
-Coverage must stay at 80% or higher (statements, branches, functions, and lines). CI runs lint, typecheck, and coverage on every pull request to `master`.
+Coverage must stay at 80% or higher. CI runs lint, typecheck, and coverage on every pull request.
 
-## Docs
+## Docs and contributing
 
-- [Contributing](CONTRIBUTING.md)
-- [Architecture](docs/architecture.md)
-- [Security](SECURITY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Architecture](docs/architecture.md) — how a live room is assembled
 - [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security](SECURITY.md)
 
-## License
-
-[MIT](LICENSE)
-
-Not affiliated with Sleeper, Fantasy Football Calculator, nflverse, ESPN, OpenAI, or Anthropic. Recommendations are decision support, not a guarantee.
+MIT. See [LICENSE](LICENSE).

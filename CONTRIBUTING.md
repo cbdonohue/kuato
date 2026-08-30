@@ -21,7 +21,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-Set `SITE_PASSWORD` in `.env.local`. Optionally set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` to exercise the coach, scout, compare, and roster tools.
+Set `SITE_PASSWORD` in `.env.local`. Optionally set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` to exercise Ask, Scout, Compare, Review roster, News briefing, Sleepers & fades, and Injury analysis.
 
 ```bash
 npm run dev
