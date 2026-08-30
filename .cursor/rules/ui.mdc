@@ -1,0 +1,27 @@
+---
+description: Live room, home, and Tailwind UI conventions
+globs: src/components/**/*, src/app/**/*.tsx, src/app/globals.css
+alwaysApply: false
+---
+
+# UI
+
+Dark, dense draft HUD. Tokens live in `src/app/globals.css` (`@theme inline`): `background`, `foreground`, `panel`, `panel-border`, `muted`, `accent`, `accent-dim`. Tailwind CSS v4 — no `tailwind.config.js`. Prefer those tokens over ad-hoc hex.
+
+## Structure
+
+- Pages in `src/app/` stay server components when they only read `params` / `searchParams`.
+- Interactive surfaces are client components: `src/components/live-room.tsx`, `home-search.tsx`, `mock-drafts.tsx`, `coach-panel.tsx`.
+- Live room polls `GET /api/drafts/:id/live?username=` about every 2s (`POLL_MS`). Keep the payload a snapshot; do not add client-side scoring.
+- Named exports for components. Colocate a `*.test.tsx` when behavior matters (filters, clock copy, empty username, compare mode).
+
+## Copy and product constraints
+
+- The app does not make picks. Do not add a “draft this player” action that hits Sleeper.
+- Username is required to open `/draft/[draftId]`. Mock tab still asks for a username so the seat can be resolved.
+- Show ADP, ADP gap vs current pick, bye, injury, and last-year line when the snapshot has them.
+- Position chips use `src/components/position-badge.tsx`.
+
+## After live-room visual changes
+
+Replace `docs/live-room.webp` (README autoplay) and update `docs/live-room.mp4` if you still have the source clip.

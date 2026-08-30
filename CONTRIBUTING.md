@@ -64,8 +64,11 @@ Coverage must stay at 80% or higher for statements, branches, functions, and lin
 | `src/lib/` | Sleeper, ADP, nflverse, scoring, AI, auth |
 | `src/proxy.ts` | Session gate for pages and `/api/*` |
 | `docs/` | README walkthrough and architecture notes |
+| `.cursor/rules/` | Cursor project rules for agents (`.mdc`) |
 
 Recommendation scoring lives in `src/lib/recommend.ts`. Live draft assembly is `src/lib/live.ts`. See [docs/architecture.md](docs/architecture.md) for the data flow.
+
+Cursor Agent reads `.cursor/rules/*.mdc`. Keep those rules short and tied to this repo: redraft-only, read-only Sleeper, `src/proxy.ts` instead of `middleware.ts`, colocated Vitest, 80% coverage. Update a rule when an agent repeatedly gets a convention wrong.
 
 ## Issues
 

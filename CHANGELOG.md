@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cursor project rules under `.cursor/rules` for agents working in this repo
 - Injury analysis coach action from Sleeper roster and remaining-board flags
 - MIT license, contributing guide, code of conduct, and security policy
 - GitHub issue forms, pull request template, Dependabot, EditorConfig, and `.nvmrc`

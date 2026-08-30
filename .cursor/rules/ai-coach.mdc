@@ -1,0 +1,33 @@
+---
+description: Optional LLM coach actions, prompts, and client panel
+globs: src/lib/ai.ts, src/lib/ai-run.ts, src/lib/llm.ts, src/lib/coach.ts, src/components/coach-panel.tsx, src/app/api/drafts/[draftId]/ai/**
+alwaysApply: false
+---
+
+# AI coach
+
+The coach is optional. Rankings never depend on it.
+
+## Actions
+
+`AI_ACTIONS` in `src/lib/ai.ts`: `ask`, `scout`, `compare`, `review`, `briefing`, `board`, `injury`.
+
+`POST /api/drafts/:draftId/ai?username=` body is `{ action, question?, playerId?, playerIds? }`.
+
+- `ask` requires `question` ≤ 400 characters
+- `scout` requires `playerId` still on the board
+- `compare` requires two different remaining `playerIds`
+- Missing LLM key → 503 (`hasLlmKey`)
+- `src/lib/ai-run.ts` rebuilds the snapshot with `buildLiveState(..., { skipCoach: true })` so Ask/Scout do not recurse into the on-the-clock note
+
+Prompts are built from the live snapshot in `src/lib/ai.ts`. Keep them grounded in remaining players, roster holes, ADP, news, and injury flags already on the state. Do not send API keys, session tokens, or the full Sleeper player dump to the model.
+
+## Provider
+
+`src/lib/llm.ts`: OpenAI first when `OPENAI_API_KEY` is set; otherwise Anthropic. `AI_MODEL` may override the default id. Time out and return `null` rather than throwing through the live poll.
+
+On-the-clock copy is `src/lib/coach.ts` (`shouldAskCoach` when `picksUntilUser <= 2`). Cache notes by draft + pick + top player. Failure must not break `buildLiveState`.
+
+## UI
+
+`src/components/coach-panel.tsx` is a client island. It posts to the AI route and renders `{ title, note }`. Do not import `@/lib/llm` or env keys into the client. Coach UI stays usable as a hidden/empty panel when the server returns 503.
