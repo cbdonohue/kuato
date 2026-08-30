@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Architecture notes under `docs/`
 - CI lint and TypeScript checks alongside the existing 80% coverage job
 
+### Changed
+
+- README uses an animated WebP walkthrough (GitHub will not play a repo-hosted `<video>`)
+
 ### Fixed
 
 - ESLint issues that would fail the new CI lint step (`prefer-const`, unused import, React purity on AI triggers, localStorage hydration)
