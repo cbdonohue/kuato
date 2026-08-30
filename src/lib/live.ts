@@ -43,11 +43,11 @@ import type {
   SleeperUser,
 } from "./types";
 
-function draftName(draft: SleeperDraft, league: SleeperLeague | null): string {
+export function draftName(draft: SleeperDraft, league: SleeperLeague | null): string {
   return draft.metadata?.name || league?.name || `Draft ${draft.draft_id}`;
 }
 
-function rosterPositionsFor(
+export function rosterPositionsFor(
   draft: SleeperDraft,
   league: SleeperLeague | null,
 ): string[] {
@@ -69,7 +69,7 @@ function rosterPositionsFor(
   return slots;
 }
 
-function resolveUserSlot(
+export function resolveUserSlot(
   user: SleeperUser,
   draft: SleeperDraft,
   rosters: SleeperRoster[],
@@ -100,7 +100,7 @@ function resolveUserSlot(
   return { slot: null, rosterId: null };
 }
 
-function displayNameFor(
+export function displayNameFor(
   userId: string | null,
   users: SleeperLeagueUser[],
   self: SleeperUser,
@@ -134,7 +134,7 @@ function userIdForRoster(
   return null;
 }
 
-function resolvePickManager(
+export function resolvePickManager(
   pick: SleeperPick,
   opts: {
     user: SleeperUser;
@@ -165,7 +165,7 @@ function resolvePickManager(
   };
 }
 
-function buildClock(opts: {
+export function buildClock(opts: {
   draft: SleeperDraft;
   picks: SleeperPick[];
   user: SleeperUser;
@@ -225,7 +225,7 @@ function buildClock(opts: {
   };
 }
 
-function availableBoard(
+export function availableBoard(
   picks: SleeperPick[],
   players: Record<string, SleeperPlayer>,
   extras?: EnrichmentIndex | null,
