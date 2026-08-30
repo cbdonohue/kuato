@@ -1,5 +1,7 @@
 # Kuato
 
+<img src="public/kuato.png" alt="Kuato" width="160" />
+
 Password-gated Next.js app for live [Sleeper](https://sleeper.com/) redraft rooms. It ranks remaining players from ADP, roster holes, demand, news, and nflverse stats. It cannot make picks. Auction drafts and dynasty leagues are out of scope.
 
 ## Live draft
