@@ -5,13 +5,31 @@
   "portsAttributes": {
     "3000": {
       "label": "Kuato",
-      "onAutoForward": "notify"
+      "onAutoForward": "openPreview",
+      "requireLocalPort": true
     }
   },
-  "postCreateCommand": "npm ci && (test -f .env.local || cp .env.example .env.local)",
+  "waitFor": "postCreateCommand",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": {
+    "Kuato": "bash .devcontainer/start.sh"
+  },
+  "remoteEnv": {
+    "SITE_PASSWORD": "${localEnv:SITE_PASSWORD:kuato}"
+  },
   "customizations": {
     "vscode": {
-      "extensions": ["dbaeumer.vscode-eslint"]
+      "extensions": ["dbaeumer.vscode-eslint"],
+      "settings": {
+        "task.allowAutomaticTasks": "on",
+        "remote.autoForwardPorts": true,
+        "remote.portsAttributes": {
+          "3000": {
+            "label": "Kuato",
+            "onAutoForward": "openPreview"
+          }
+        }
+      }
     }
   }
 }

@@ -67,7 +67,7 @@ The coach is optional. Rankings still run without a model key.
 
 ## Run locally
 
-Node.js 20+ and npm. Or [open in GitHub Codespaces](https://codespaces.new/cbdonohue/kuato) — the container runs `npm ci` and copies `.env.example` to `.env.local`.
+Node.js 20+ and npm. Or [open in GitHub Codespaces](https://codespaces.new/cbdonohue/kuato) — use a new codespace (an existing default-image session will not pick this up until you rebuild). The container runs `npm ci`, writes `.env.local` (`SITE_PASSWORD=kuato` unless you set a Codespaces secret), starts the Next.js server, and forwards port 3000.
 
 ```bash
 git clone https://github.com/cbdonohue/kuato.git
