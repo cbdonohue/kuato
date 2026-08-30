@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  beforeYourPickSummary,
   detectUnsupported,
+  depthLabel,
+  fillRosterSlots,
+  injuryPenalty,
+  injuryReason,
+  invertDraftOrder,
+  isAuction,
+  isDynastyLeague,
+  isSuperflex,
+  nextPickNumber,
   picksUntilRosterOnClock,
+  playerName,
   recommend,
   rosterForPick,
+  scoringFromSettings,
+  sleeperRankValue,
   slotForPick,
   toPlayerView,
+  userPicksForRoster,
   type ClockInput,
   type RecommendInput,
 } from "./recommend";
@@ -71,6 +85,11 @@ describe("slotForPick", () => {
     expect(slotForPick(13, 12, "linear")).toBe(1);
     expect(slotForPick(14, 12, "linear")).toBe(2);
   });
+
+  it("returns 0 for invalid pick or team counts", () => {
+    expect(slotForPick(0, 12, "snake")).toBe(0);
+    expect(slotForPick(1, 0, "snake")).toBe(0);
+  });
 });
 
 describe("picksUntilRosterOnClock", () => {
@@ -88,6 +107,223 @@ describe("picksUntilRosterOnClock", () => {
     const result = picksUntilRosterOnClock(13, 1, twelveTeamSnake);
     expect(result.nextPickNoForRoster).toBe(24);
     expect(result.picksUntil).toBe(11);
+  });
+
+  it("returns null after the draft is complete", () => {
+    expect(picksUntilRosterOnClock(181, 1, twelveTeamSnake)).toEqual({
+      picksUntil: null,
+      nextPickNoForRoster: null,
+    });
+  });
+});
+
+describe("nextPickNumber", () => {
+  it("starts at 1 and advances past the highest pick", () => {
+    expect(nextPickNumber([])).toBe(1);
+    expect(nextPickNumber([pick("a", 1, 3), pick("b", 2, 7)])).toBe(8);
+  });
+});
+
+describe("scoringFromSettings", () => {
+  it("prefers draft metadata and otherwise uses reception points", () => {
+    expect(scoringFromSettings("ppr")).toBe("ppr");
+    expect(scoringFromSettings("half_ppr")).toBe("half_ppr");
+    expect(scoringFromSettings("std")).toBe("std");
+    expect(scoringFromSettings("custom", 1)).toBe("ppr");
+    expect(scoringFromSettings(null, 0.5)).toBe("half_ppr");
+    expect(scoringFromSettings(undefined, 0)).toBe("std");
+    expect(scoringFromSettings(undefined)).toBe("std");
+  });
+});
+
+describe("league shape helpers", () => {
+  it("detects auction, dynasty, taxi, and superflex", () => {
+    expect(isAuction("auction")).toBe(true);
+    expect(isAuction("snake")).toBe(false);
+    expect(isDynastyLeague({ type: 2 })).toBe(true);
+    expect(isDynastyLeague({ type: "2" })).toBe(true);
+    expect(isDynastyLeague({ taxi_slots: 2 })).toBe(true);
+    expect(isDynastyLeague({ type: 0, taxi_slots: 0 })).toBe(false);
+    expect(isDynastyLeague()).toBe(false);
+    expect(isSuperflex(["QB", "SUPER_FLEX"])).toBe(true);
+    expect(isSuperflex(["Q/W/R/T"])).toBe(true);
+    expect(isSuperflex(["SUPERFLEX"])).toBe(true);
+    expect(isSuperflex(["QB", "FLEX"])).toBe(false);
+  });
+
+  it("flags dynasty when taxi slots are present", () => {
+    expect(detectUnsupported({ draftType: "snake", leagueSettings: { taxi_slots: 1 } })).toBe(
+      "dynasty",
+    );
+  });
+});
+
+describe("player helpers", () => {
+  it("builds a name from full_name or first/last", () => {
+    expect(playerName(undefined, "x")).toBe("x");
+    expect(playerName(player("p", "WR", 1, { full_name: "A.J. Brown" }), "p")).toBe(
+      "A.J. Brown",
+    );
+    expect(
+      playerName(player("p", "WR", 1, { first_name: "Ja'Marr", last_name: "Chase" }), "p"),
+    ).toBe("Ja'Marr Chase");
+  });
+
+  it("treats missing search_rank as 9999", () => {
+    expect(sleeperRankValue(player("p", "WR", 12))).toBe(12);
+    expect(sleeperRankValue(player("p", "WR", 0))).toBe(9999);
+    expect(sleeperRankValue(undefined)).toBe(9999);
+  });
+
+  it("formats skill-position depth and skips invalid values", () => {
+    expect(depthLabel("WR", 1)).toBe("WR1");
+    expect(depthLabel("K", 1)).toBeNull();
+    expect(depthLabel("RB", 0)).toBeNull();
+    expect(depthLabel("RB", "")).toBeNull();
+    expect(depthLabel(undefined, 1)).toBeNull();
+  });
+});
+
+describe("injury helpers", () => {
+  it("scores IR/PUP higher than questionable", () => {
+    expect(injuryPenalty("IR")).toBe(2.5);
+    expect(injuryPenalty("PUP")).toBe(2.5);
+    expect(injuryPenalty("Out")).toBe(2.0);
+    expect(injuryPenalty("Suspended")).toBe(2.0);
+    expect(injuryPenalty("Doubtful")).toBe(1.0);
+    expect(injuryPenalty("Questionable")).toBe(0.35);
+    expect(injuryPenalty(null)).toBe(0);
+  });
+
+  it("builds a reason from status, body part, and practice", () => {
+    const injured = toPlayerView(
+      player("hurt", "WR", 8, {
+        injury_status: "Questionable",
+        injury_body_part: "hamstring",
+        practice_participation: "Did Not Participate",
+      }),
+      "hurt",
+    );
+    expect(injuryReason(injured)).toBe("Questionable · hamstring · DNP");
+    expect(injuryReason(toPlayerView(player("ok", "WR", 8), "ok"))).toBeNull();
+    expect(
+      injuryReason(
+        toPlayerView(
+          player("status", "WR", 8, { injury_status: "Questionable" }),
+          "status",
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it("uses notes when body part is missing and ignores full practice", () => {
+    const view = toPlayerView(
+      player("hurt", "WR", 8, {
+        injury_status: "Out",
+        injury_notes: "Ankle sprain, week-to-week",
+        practice_participation: "Full",
+      }),
+      "hurt",
+    );
+    expect(injuryReason(view)).toBe("Out · Ankle sprain, week-to-week");
+  });
+});
+
+describe("fillRosterSlots", () => {
+  it("fills dedicated slots, then flex/superflex, then bench", () => {
+    const players: Record<string, SleeperPlayer> = {
+      qb1: player("qb1", "QB", 18),
+      qb2: player("qb2", "QB", 25),
+      wr1: player("wr1", "WR", 8),
+      wr2: player("wr2", "WR", 12),
+      wr3: player("wr3", "WR", 30),
+      rb1: player("rb1", "RB", 4),
+    };
+    const slots = fillRosterSlots(
+      [
+        pick("qb1", 1, 1),
+        pick("qb2", 1, 2),
+        pick("wr1", 1, 3),
+        pick("wr2", 1, 4),
+        pick("wr3", 1, 5),
+        pick("rb1", 1, 6),
+      ],
+      ["QB", "RB", "WR", "FLEX", "SUPER_FLEX", "BN", "IR"],
+      players,
+    );
+    expect(slots.find((slot) => slot.slot === "QB")?.player?.playerId).toBe("qb1");
+    expect(slots.find((slot) => slot.slot === "SUPER_FLEX")?.player?.playerId).toBe("qb2");
+    expect(slots.find((slot) => slot.slot === "WR")?.player?.playerId).toBe("wr1");
+    expect(slots.find((slot) => slot.slot === "FLEX")?.player?.playerId).toBe("wr2");
+    expect(slots.find((slot) => slot.slot === "BN")?.player?.playerId).toBe("wr3");
+    expect(slots.find((slot) => slot.slot === "IR")?.player).toBeNull();
+    expect(slots.find((slot) => slot.slot === "RB")?.player?.playerId).toBe("rb1");
+  });
+});
+
+describe("invertDraftOrder and userPicksForRoster", () => {
+  it("inverts slot maps and filters a roster including string ids", () => {
+    expect(invertDraftOrder(null)).toEqual({});
+    expect(invertDraftOrder({ u1: 1, u2: 3 })).toEqual({ 1: "u1", 3: "u2" });
+    const picks = [pick("a", 1, 1), { ...pick("b", 2, 2), roster_id: "1" }, pick("c", 3, 3)];
+    expect(userPicksForRoster(picks, 1).map((entry) => entry.player_id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("beforeYourPickSummary", () => {
+  const rosterPositions = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "BN"];
+
+  it("is null when the user is on the clock", () => {
+    expect(
+      beforeYourPickSummary({
+        ...twelveTeamSnake,
+        pickNo: 1,
+        scoringType: "ppr",
+        rosterPositions,
+        userRosterId: 1,
+        picks: [],
+        players: {},
+        picksUntilUser: 0,
+      }),
+    ).toBeNull();
+  });
+
+  it("summarizes starter holes for the managers picking before you", () => {
+    const players = {
+      r1qb: player("r1qb", "QB", 50),
+      r1wr1: player("r1wr1", "WR", 51),
+      r1wr2: player("r1wr2", "WR", 52),
+      r1te: player("r1te", "TE", 53),
+      r1flex: player("r1flex", "WR", 54),
+      r2qb: player("r2qb", "QB", 55),
+      r2wr1: player("r2wr1", "WR", 56),
+      r2wr2: player("r2wr2", "WR", 57),
+      r2te: player("r2te", "TE", 58),
+      r2flex: player("r2flex", "WR", 59),
+    };
+    const summary = beforeYourPickSummary({
+      ...twelveTeamSnake,
+      pickNo: 1,
+      scoringType: "std",
+      rosterPositions,
+      userRosterId: 3,
+      picksUntilUser: 2,
+      players,
+      picks: [
+        pick("r1qb", 1, 10),
+        pick("r1wr1", 1, 11),
+        pick("r1wr2", 1, 12),
+        pick("r1te", 1, 13),
+        pick("r1flex", 1, 14),
+        pick("r2qb", 2, 15),
+        pick("r2wr1", 2, 16),
+        pick("r2wr2", 2, 17),
+        pick("r2te", 2, 18),
+        pick("r2flex", 2, 19),
+      ],
+    });
+    expect(summary).toContain("Before your pick:");
+    expect(summary).toContain("still need RB");
   });
 });
 
@@ -167,6 +403,20 @@ describe("recommend", () => {
       ...overrides,
     };
   }
+
+  it("returns no picks for an auction draft", () => {
+    expect(recommend(input({ draftType: "auction" }))).toEqual([]);
+  });
+
+  it("uses best-available copy when no hole or ADP reason applies", () => {
+    const recs = recommend(
+      input({
+        rosterPositions: ["BN"],
+        players: { wr1: player("wr1", "WR", 8) },
+      }),
+    );
+    expect(recs[0].reasons).toContain("Best available on the board");
+  });
 
   it("excludes drafted players", () => {
     const recs = recommend(

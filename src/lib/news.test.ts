@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatAge,
   parseEspnNews,
   parseGoogleRss,
   pickTopStories,
   titleMatchesPlayer,
+  truncateHeadline,
 } from "./news";
 import type { DraftStory } from "./types";
 
@@ -98,6 +100,29 @@ describe("parseGoogleRss", () => {
   });
 });
 
+describe("headline helpers", () => {
+  it("truncates long headlines with an ellipsis", () => {
+    expect(truncateHeadline("short")).toBe("short");
+    const long = "x".repeat(160);
+    const trimmed = truncateHeadline(long, 20);
+    expect(trimmed.endsWith("…")).toBe(true);
+    expect(trimmed.length).toBe(20);
+  });
+
+  it("formats story age from minutes through days", () => {
+    const now = Date.parse("2026-08-30T12:00:00Z");
+    expect(formatAge(now - 30_000, now)).toBe("1m ago");
+    expect(formatAge(now - 5 * 60_000, now)).toBe("5m ago");
+    expect(formatAge(now - 90 * 60_000, now)).toBe("2h ago");
+    expect(formatAge(now - 50 * 60 * 60_000, now)).toBe("2d ago");
+  });
+
+  it("matches last names and ignores Jr suffixes", () => {
+    expect(titleMatchesPlayer("Gibbs scores twice", "Jahmyr Gibbs Jr.")).toBe(true);
+    expect(titleMatchesPlayer("Unrelated headline", "A.J.")).toBe(false);
+  });
+});
+
 describe("pickTopStories", () => {
   it("keeps the newest stories and caps two per player", () => {
     const picked = pickTopStories(
@@ -136,5 +161,17 @@ describe("pickTopStories", () => {
       "New B",
       "New C",
     ]);
+  });
+
+  it("drops duplicate headlines", () => {
+    const picked = pickTopStories(
+      [
+        story({ playerId: "a", headline: "Same", publishedAt: 2 }),
+        story({ playerId: "b", headline: "Same", publishedAt: 1 }),
+      ],
+      5,
+    );
+    expect(picked).toHaveLength(1);
+    expect(picked[0].playerId).toBe("a");
   });
 });

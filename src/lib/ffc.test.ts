@@ -1,14 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { fetchText, loadDayCache } from "./cache";
 import {
   canonPosition,
   canonTeam,
   ffcFormat,
+  getFfcAdp,
   indexFfcPlayers,
   matchFfc,
   nearestFfcTeams,
   normalizeName,
   type FfcAdpPlayer,
 } from "./ffc";
+
+vi.mock("./cache", () => ({
+  fetchText: vi.fn(),
+  loadDayCache: vi.fn(async (_name: string, loader: () => Promise<unknown>) => loader()),
+}));
 
 const sample: FfcAdpPlayer[] = [
   {
@@ -59,8 +66,14 @@ describe("ffc mapping", () => {
     expect(normalizeName("Jahmyr Gibbs Jr.")).toBe("jahmyr gibbs");
     expect(normalizeName("Ka'imi Fairbairn")).toBe("kaimi fairbairn");
     expect(canonPosition("PK")).toBe("K");
+    expect(canonPosition("DST")).toBe("DEF");
     expect(canonTeam("JAC")).toBe("JAX");
     expect(canonTeam("LVR")).toBe("LV");
+    expect(canonTeam("WSH")).toBe("WAS");
+    expect(canonTeam("LA")).toBe("LAR");
+    expect(canonTeam("SD")).toBe("LAC");
+    expect(canonTeam("STL")).toBe("LAR");
+    expect(canonTeam("OAK")).toBe("LV");
   });
 });
 
@@ -82,5 +95,48 @@ describe("matchFfc", () => {
     const match = matchFfc("Houston Texans", "DEF", "HOU", index);
     expect(match?.adp).toBe(98.1);
     expect(match?.byeWeek).toBe(8);
+  });
+
+  it("falls back to name and position when the team is missing", () => {
+    const match = matchFfc("Jahmyr Gibbs", "RB", "", index);
+    expect(match?.adp).toBe(1.5);
+  });
+
+  it("returns null when the same name and position map to two ADPs", () => {
+    const crowded = indexFfcPlayers([
+      ...sample,
+      {
+        player_id: 4,
+        name: "Jahmyr Gibbs Jr.",
+        position: "RB",
+        team: "FA",
+        adp: 40,
+      },
+    ]);
+    expect(matchFfc("Jahmyr Gibbs", "RB", "DET", crowded)?.adp).toBe(1.5);
+    expect(matchFfc("Jahmyr Gibbs", "RB", "KC", crowded)).toBeNull();
+  });
+});
+
+describe("getFfcAdp", () => {
+  it("returns players from the FFC payload", async () => {
+    vi.mocked(fetchText).mockResolvedValueOnce(
+      JSON.stringify({ status: "ok", players: sample }),
+    );
+    await expect(
+      getFfcAdp({ scoringType: "ppr", superflex: false, teams: 12, year: 2026 }),
+    ).resolves.toEqual(sample);
+  });
+
+  it("returns an empty list when the request fails or the payload is invalid", async () => {
+    vi.mocked(fetchText).mockRejectedValueOnce(new Error("offline"));
+    await expect(
+      getFfcAdp({ scoringType: "std", superflex: true, teams: 10, year: 2026 }),
+    ).resolves.toEqual([]);
+
+    vi.mocked(fetchText).mockResolvedValueOnce(JSON.stringify({ status: "error" }));
+    await expect(
+      getFfcAdp({ scoringType: "ppr", superflex: false, teams: 12, year: 2026 }),
+    ).resolves.toEqual([]);
   });
 });
