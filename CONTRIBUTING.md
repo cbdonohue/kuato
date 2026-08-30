@@ -12,7 +12,7 @@ Kuato is a Next.js app that reads public [Sleeper](https://docs.sleeper.com/) dr
 
 ## Setup
 
-You need Node.js 20+ and npm.
+You need Node.js 20+ and npm. Or [open in GitHub Codespaces](https://codespaces.new/cbdonohue/kuato); the container runs `npm ci` and copies `.env.example` to `.env.local`.
 
 ```bash
 git clone https://github.com/cbdonohue/kuato.git
@@ -59,6 +59,7 @@ Coverage must stay at 80% or higher for statements, branches, functions, and lin
 
 | Path | Role |
 | --- | --- |
+| `.devcontainer/` | GitHub Codespaces / Dev Containers (Node 20, port 3000) |
 | `src/app/` | App Router pages and API routes |
 | `src/components/` | Live room, home lookup, coach panel |
 | `src/lib/` | Sleeper, ADP, nflverse, scoring, AI, auth |

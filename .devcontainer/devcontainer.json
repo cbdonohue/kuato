@@ -1,0 +1,17 @@
+{
+  "name": "Kuato",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bookworm",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Kuato",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "npm ci && (test -f .env.local || cp .env.example .env.local)",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  }
+}

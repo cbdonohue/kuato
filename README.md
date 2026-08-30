@@ -2,6 +2,8 @@
 
 <img src="public/kuato.png" alt="Kuato" width="160" />
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/cbdonohue/kuato)
+
 Password-gated Next.js app for live [Sleeper](https://sleeper.com/) redraft rooms. It ranks remaining players from ADP, roster holes, demand, news, and nflverse stats. It cannot make picks. Auction drafts and dynasty leagues are out of scope.
 
 ## Live draft
@@ -61,7 +63,7 @@ The coach is optional. Rankings still run without a model key.
 
 ## Run locally
 
-Node.js 20+ and npm.
+Node.js 20+ and npm. Or [open in GitHub Codespaces](https://codespaces.new/cbdonohue/kuato) — the container runs `npm ci` and copies `.env.example` to `.env.local`.
 
 ```bash
 git clone https://github.com/cbdonohue/kuato.git
