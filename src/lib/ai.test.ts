@@ -198,6 +198,32 @@ describe("suggestedQuestions", () => {
     );
     expect(questions).toContain("When should I take a QB?");
   });
+
+  it("asks about the remaining RB or WR hole", () => {
+    const rbOnly = suggestedQuestions(
+      sampleState({
+        roster: [
+          { slot: "RB", player: null },
+          { slot: "WR", player: player("401", { name: "Ja'Marr Chase" }) },
+          { slot: "TE", player: player("te1", { name: "Travis Kelce", position: "TE" }) },
+        ],
+        stories: [],
+      }),
+    );
+    expect(rbOnly).toContain("Is it time to lock in an RB?");
+
+    const wrOnly = suggestedQuestions(
+      sampleState({
+        roster: [
+          { slot: "RB", player: player("rb1", { name: "Bijan Robinson", position: "RB" }) },
+          { slot: "WR", player: null },
+          { slot: "TE", player: player("te1", { name: "Travis Kelce", position: "TE" }) },
+        ],
+        stories: [],
+      }),
+    );
+    expect(wrOnly).toContain("Should I keep stacking WRs?");
+  });
 });
 
 describe("draft helpers", () => {
@@ -207,8 +233,35 @@ describe("draft helpers", () => {
     expect(bijan).toBeTruthy();
     expect(formatPlayerLine(bijan!)).toContain("Bijan Robinson");
     expect(formatPlayerLine(bijan!)).toContain("ADP 4");
+    const unranked = player("x", { name: "Unknown", injuryStatus: "Q", rookie: true });
+    unranked.adp = null;
+    unranked.lastSeason = null;
+    unranked.byeWeek = null;
+    unranked.depth = null;
+    expect(formatPlayerLine(unranked)).toContain("rank 20");
+    expect(formatPlayerLine(unranked)).toContain("Q");
+    expect(formatPlayerLine(unranked)).toContain("rookie");
     expect(findPlayer(state, "te1")?.name).toBe("Travis Kelce");
     expect(findPlayer(state, "missing")).toBeNull();
+    expect(
+      findPlayer(
+        sampleState({
+          recommendations: [],
+          available: [],
+          roster: [{ slot: "BN", player: null }],
+          recentPicks: [
+            {
+              pickNo: 1,
+              round: 1,
+              player: player("taken", { name: "A.J. Brown" }),
+              pickedByName: "Sam",
+              isYou: false,
+            },
+          ],
+        }),
+        "taken",
+      )?.name,
+    ).toBe("A.J. Brown");
 
     const clustered = sampleState({
       roster: [
@@ -236,6 +289,25 @@ describe("draft helpers", () => {
     expect(context).toContain("Travis Kelce");
     expect(context).toContain("Kelce expected to play week 1");
     expect(context).toContain("The manager picks in 2 selection(s).");
+    expect(
+      draftContext(
+        sampleState({
+          clock: { ...sampleState().clock, picksUntilUser: 0 },
+          roster: [{ slot: "QB", player: player("qb1", { name: "Jalen Hurts", position: "QB" }) }],
+          recommendations: [],
+          stories: [],
+          recentPicks: [],
+          available: [],
+        }),
+      ),
+    ).toContain("The manager is on the clock.");
+    expect(
+      draftContext(
+        sampleState({
+          clock: { ...sampleState().clock, picksUntilUser: null },
+        }),
+      ),
+    ).toContain("Pick timing is unknown.");
   });
 });
 
@@ -262,6 +334,24 @@ describe("buildAiPrompt", () => {
     expect(actionTitle({ action: "compare", playerIds: ["te1", "401"] }, state)).toBe(
       "Compare · Travis Kelce vs Ja'Marr Chase",
     );
+    expect(actionTitle({ action: "scout" }, state)).toBe("Scout");
+    expect(actionTitle({ action: "compare" }, state)).toBe("Compare");
+    expect(actionTitle({ action: "review" }, state)).toBe("Roster review");
+    expect(actionTitle({ action: "briefing" }, state)).toBe("News briefing");
+    expect(actionTitle({ action: "board" }, state)).toBe("Sleepers & fades");
+    expect(actionTitle({ action: "ask", question: "hi" }, state)).toBe("Ask");
+    expect(
+      actionTitle({ action: "unknown" as never }, state),
+    ).toBe("Coach");
+
+    const review = buildAiPrompt({ action: "review" }, state);
+    expect(review).toContain("Review roster construction");
+    const briefing = buildAiPrompt({ action: "briefing" }, state);
+    expect(briefing).toContain("Using the headlines");
+    const scoutMissing = buildAiPrompt({ action: "scout", playerId: "nope" }, state);
+    expect(scoutMissing).toContain("nope");
+    const compareMissing = buildAiPrompt({ action: "compare", playerIds: ["nope", "gone"] }, state);
+    expect(compareMissing).toContain("nope");
   });
 
   it("uses a larger remaining board for sleepers and fades", () => {

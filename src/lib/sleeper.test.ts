@@ -91,4 +91,28 @@ describe("getNflPlayers", () => {
     expect(fetch).toHaveBeenCalledOnce();
     expect(writeFile).toHaveBeenCalled();
   });
+
+  it("serves a fresh on-disk cache and swallows cache writes that fail", async () => {
+    vi.resetModules();
+    vi.mocked(readFile).mockResolvedValue(
+      JSON.stringify({
+        fetchedAt: Date.now(),
+        players: { "2": { player_id: "2", full_name: "Cached" } },
+      }),
+    );
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { getNflPlayers: loadFromDisk } = await import("./sleeper");
+    await expect(loadFromDisk()).resolves.toEqual({
+      "2": { player_id: "2", full_name: "Cached" },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.resetModules();
+    vi.mocked(readFile).mockRejectedValue(new Error("missing"));
+    vi.mocked(mkdir).mockRejectedValue(new Error("ro fs"));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, { "3": { player_id: "3" } })));
+    const { getNflPlayers: loadAndFailWrite } = await import("./sleeper");
+    await expect(loadAndFailWrite()).resolves.toEqual({ "3": { player_id: "3" } });
+  });
 });

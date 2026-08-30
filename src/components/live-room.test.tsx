@@ -425,4 +425,84 @@ describe("LiveRoom", () => {
     ).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it("scouts a player and compares two board selections", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (String(url).includes("/ai")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as { action?: string };
+        return Promise.resolve({
+          ok: true,
+          json: async () =>
+            body.action === "compare"
+              ? { title: "Compare · Chase vs Henry", note: "Take Chase." }
+              : { title: "Scout · Ja'Marr Chase", note: "Scouted Chase." },
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => liveState(),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<LiveRoom draftId="d1" username="brian" />);
+    expect(await screen.findByRole("heading", { name: "Home League Draft" })).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole("button", { name: "Scout" })[0]);
+    expect(await screen.findByText("Scouted Chase.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(screen.getByText(/Click two players/)).toBeInTheDocument();
+    const selectButtons = screen.getAllByRole("button", { name: "Select" });
+    await user.click(selectButtons[0]);
+    await user.click(selectButtons[0]);
+    await user.click(selectButtons[0]);
+    await user.click(selectButtons[1]);
+    expect(screen.getByText(/Selected: Ja'Marr Chase vs Derrick Henry/)).toBeInTheDocument();
+    await user.click(selectButtons[selectButtons.length - 1]);
+    expect(screen.getByText(/Selected: Derrick Henry vs Ka'imi Fairbairn/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Compare selected" }));
+    expect(await screen.findByText("Take Chase.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(screen.queryByText(/Selected:/)).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("hides scout when AI is off and labels a single story", async () => {
+    mockLive(
+      liveState({
+        aiEnabled: false,
+        coachNote: null,
+        stories: [
+          {
+            playerId: "wr1",
+            playerName: "Ja'Marr Chase",
+            position: "WR",
+            source: "ESPN",
+            headline: "Chase limited Wednesday",
+            publishedAt: 1,
+            age: "1h ago",
+            url: "https://www.espn.com/chase",
+          },
+        ],
+        newsSources: ["ESPN"],
+        recommendations: [],
+        unsupported: null,
+      }),
+    );
+    render(<LiveRoom draftId="d1" username="brian" />);
+    expect(await screen.findByText("1 story")).toBeInTheDocument();
+    expect(screen.getByText("No remaining players to recommend.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Scout" })).not.toBeInTheDocument();
+    expect(screen.getByText(/OPENAI_API_KEY/)).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses a generic error when the payload has no message", async () => {
+    mockLive({} as never, false);
+    render(<LiveRoom draftId="d1" username="brian" />);
+    expect(await screen.findByText("Failed to load draft")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });
